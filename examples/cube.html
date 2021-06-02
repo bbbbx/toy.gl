@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cube</title>
+  <script src="../dist/toygl.min.js"></script>
+  <script src="./ThirdParty/gl-matrix-min.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const vs = `
+      attribute vec3 a_position;
+      varying vec3 v_position;
+      uniform mat4 u_modelMatrix;
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      void main() {
+        mat4 mvp = u_projectionMatrix * u_viewMatrix * u_modelMatrix;
+        gl_Position = mvp * vec4(a_position, 1);
+        v_position = a_position;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      varying vec3 v_position;
+      void main() {
+        gl_FragColor = vec4(v_position, 1);
+      }
+    `;
+
+    const modelMatrix = glMatrix.mat4.create();
+
+    const eye = [0, 3, 5];
+    const target = [0, 0, 0];
+    const up = [0, 1, 0];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+    const projectionMatrix = glMatrix.mat4.create();
+    const fovy = 45 / 180 * Math.PI;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 100;
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      const seconds = ms * 0.001;
+
+      // update model matrix
+      glMatrix.mat4.rotate(modelMatrix, modelMatrix, Math.PI / 180, [0, 1, 0]);
+
+      // set global state
+      ToyGL.setState(gl, {
+        cull: {
+          enable: true,
+          face: 'back'
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0.5, 0.8, 1],
+        depth: 1,
+      });
+
+      // execute draw command
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: [
+            -1, -1,  1,
+            -1,  1,  1,
+            -1, -1, -1,
+            -1,  1, -1,
+             1, -1,  1,
+             1,  1,  1,
+             1, -1, -1,
+             1,  1, -1,
+          ]
+        },
+        indices: [0, 1, 3, 0, 3, 2, 2, 3, 7, 2, 7, 6, 6, 7, 5, 6, 5, 4, 4, 5, 1, 4, 1, 0, 2, 6, 4, 2, 4, 0, 7, 3, 1, 7, 1, 5],
+        uniforms: {
+          u_modelMatrix: modelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+        },
+        count: 36,
+      });
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "toy.gl",
+  "version": "0.1.0",
+  "description": "A low level WebGL library.",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "dev": "rollup --config rollup.config.js --watch",
+    "build": "rollup --config rollup.config.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bbbbx/toy.gl"
+  },
+  "bugs": {
+    "url": "https://github.com/bbbbx/toy.gl/issues"
+  },
+  "homepage": "https://bbbbx.github.io/toy.gl",
+  "keywords": [
+    "WebGL",
+    "toygl"
+  ],
+  "author": "Venus",
+  "license": "MIT",
+  "devDependencies": {
+    "rollup": "^2.47.0",
+    "rollup-plugin-terser": "^7.0.2"
+  }
+}

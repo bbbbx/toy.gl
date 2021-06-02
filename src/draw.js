@@ -1,0 +1,230 @@
+import isArrayLike from './isArrayLike.js';
+import defaultValue from './defaultValue.js';
+import {
+  createProgram,
+  setCanvasToDisplaySize
+} from './glUtils.js';
+import isPowerOfTwo from './isPowerOfTwo.js';
+
+const cachedProgram = {};
+const cachedBuffer = {};
+const cachedTextures = {};
+
+function isArrayBufferView(value) {
+  return value instanceof Float32Array ||
+         value instanceof Uint8Array ||
+         value instanceof Uint16Array ||
+         value instanceof Uint32Array ||
+         value instanceof Int8Array ||
+         value instanceof Int16Array ||
+         value instanceof Int32Array;
+
+}
+
+function createAttributeBuffer(gl, typedArray, usage) {
+  const buffer = gl.createBuffer();
+  usage = defaultValue(usage, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, typedArray, usage);
+  return buffer;
+};
+
+function createIndicesBuffer(gl, typedArray, usage) {
+  const buffer = gl.createBuffer();
+  usage = defaultValue(usage, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, typedArray, usage);
+  return buffer;
+};
+
+function draw(gl, options) {
+  const { attributes, indices, vs: vsSource, fs: fsSource, count, fb } = options;
+  const primitiveType = defaultValue(options.primitiveType, gl.TRIANGLES);
+  const uniforms = defaultValue(options.uniforms, defaultValue.EMPTY_OBJECT);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+
+  const key = vsSource + fsSource;
+  let program = cachedProgram[key];
+  if (!program) {
+    program = createProgram(gl, vsSource, fsSource);
+    cachedProgram[key] = program;
+  }
+
+  gl.useProgram(program);
+  setCanvasToDisplaySize(gl.canvas);
+
+  // attributes
+  for (const attributeName in attributes) {
+    if (Object.hasOwnProperty.call(attributes, attributeName)) {
+      const attribute = attributes[attributeName];
+      const attribLocation = gl.getAttribLocation(program, attributeName);
+
+      if (attribLocation === -1) {
+        continue;
+      }
+
+      const key = attribute.toString();
+      let buffer = cachedBuffer[key];
+      // TODO: 从 shader 中找出 size
+      const size = attributeName.includes('a_position') ? 3 : 2;
+      if (Array.isArray(attribute)) {
+        // const size = vsSource.match(/attribute / + attributeName)
+        
+        // const isInteger = Number.isInteger(attribute[0]);
+        // const typedArray = isInteger ? Uint32Array : Float32Array;
+        const typedArray = Float32Array;
+        // console.log(buffer, typedArray)
+        if (!buffer) {
+          buffer = createAttributeBuffer(gl, new typedArray(attribute));
+          cachedBuffer[key] = buffer;
+        }
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.enableVertexAttribArray(attribLocation);
+        gl.vertexAttribPointer(
+          attribLocation,
+          size,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+      } else if (isArrayBufferView(attribute)) {
+        if (!buffer) {
+          buffer = createAttributeBuffer(gl, attribute);
+          cachedBuffer[key] = buffer;
+        }
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.enableVertexAttribArray(attribLocation);
+        gl.vertexAttribPointer(
+          attribLocation,
+          size,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+      }
+
+    }
+  }
+
+  // uniforms
+  const maximumTextureUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+  let currentTextureUnit = 0;
+  for (const uniformName in uniforms) {
+    if (Object.hasOwnProperty.call(uniforms, uniformName)) {
+      const uniform = uniforms[uniformName];
+      const uniformLocation = gl.getUniformLocation(program, uniformName);
+
+      if (uniformLocation === null) {
+        continue;
+      }
+
+      // gl.useProgram(program);
+
+      const typeOfUniform = typeof uniform;
+      const textureUnit = gl.TEXTURE0 + currentTextureUnit;
+      if (uniform instanceof WebGLTexture) {
+        gl.activeTexture(textureUnit);
+        gl.bindTexture(gl.TEXTURE_2D, uniform);
+        gl.uniform1i(uniformLocation, currentTextureUnit);
+
+        currentTextureUnit++;
+      } else if (isArrayLike(uniform)) {
+        const size = uniform.length;
+        if (size <= 4) {
+          gl['uniform' + size + 'fv' ](uniformLocation, uniform);
+        } else if (size <= 16) {
+          const order = Math.floor(Math.sqrt(size));
+          const transpose = false; // MUST be false
+          gl['uniformMatrix' + order + 'fv'](uniformLocation, transpose, Array.from(uniform));
+        }
+      } else if (typeOfUniform === 'number') {
+        gl.uniform1f(uniformLocation, uniform);
+      } else if (typeOfUniform === 'string') {
+
+        if (currentTextureUnit > maximumTextureUnits) {
+          console.error('texture exceed maximum texture units.');
+          continue;
+        }
+
+        let texture = cachedTextures[uniform];
+
+        if (!texture) {
+          texture = gl.createTexture();
+          gl.activeTexture(textureUnit);
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
+          const image = new Image();
+          image.src = uniform;
+          image.addEventListener('load', () => {
+            gl.activeTexture(textureUnit);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+            if (isPowerOfTwo(image.width) && isPowerOfTwo(image.height)) {
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+              gl.generateMipmap(gl.TEXTURE_2D);
+            }
+          });
+
+          cachedTextures[uniform] = texture;
+        }
+
+        gl.activeTexture(textureUnit);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(uniformLocation, currentTextureUnit);
+
+        currentTextureUnit++;
+      }
+    }
+  }
+
+  // draw
+  if (indices && indices.length > 0) {
+    let max = Number.MIN_SAFE_INTEGER;
+    for (const index of indices) {
+      max = Math.max(index, max);
+    }
+    let type, typedArray;
+    if (max <= 255) {
+      type = gl.UNSIGNED_BYTE;
+      typedArray = Uint8Array;
+    } else if (max <= 65535) {
+      type = gl.UNSIGNED_SHORT;
+      typedArray = Uint16Array;
+    } else {
+      type = gl.UNSIGNED_INT;
+      typedArray = Uint32Array;
+      gl.getExtension('OES_element_index_unit');
+    }
+
+    const key = indices.toString();
+    let buffer = cachedBuffer[key];
+    if (!buffer) {
+      buffer = createIndicesBuffer(gl, new typedArray(indices));
+      cachedBuffer[key] = buffer;
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
+    gl.drawElements(primitiveType, count, type, 0);
+  } else {
+    gl.drawArrays(primitiveType, 0, count);
+  }
+
+};
+
+export default draw;
