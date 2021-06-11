@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Importance Sample GGX</title>
+  <script src="../dist/toygl.min.js"></script>
+  <script src="./ThirdParty/gl-matrix-min.js"></script>
+  <script src="./ThirdParty/dat.gui.min.js"></script>
+  <script src="./ThirdParty/primitives.js"></script>
+  <script src="./ThirdParty/webgl_utils.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    function radicalInverse_VdC(bits) {
+      bits = (bits << 16) | (bits >>> 16);
+      bits = ((bits & 0x55555555) << 1) | ((bits & 0xAAAAAAAA) >>> 1);
+      bits = ((bits & 0x33333333) << 2) | ((bits & 0xCCCCCCCC) >>> 2);
+      bits = ((bits & 0x0F0F0F0F) << 4) | ((bits & 0xF0F0F0F0) >>> 4);
+      bits = ((bits & 0x00FF00FF) << 8) | ((bits & 0xFF00FF00) >>> 8);
+      return bits * 2.3283064365386963e-10; // / 0x100000000
+    }
+
+    function hammersley2d(i, N) {
+      return [ i / N, radicalInverse_VdC(i) ];
+    }
+
+    // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+    // https://bruop.github.io/ibl
+    function importanceSampleGGX(Xi, roughness, N) {
+      const a = roughness * roughness;
+      // Sample in spherical coordinates
+      const phi = 2.0 * Math.PI * Xi[0];
+      const cosTheta = Math.sqrt((1.0 - Xi[1]) / (1.0 + (a * a - 1.0) * Xi[1]));
+      const sinTheta = Math.sqrt(1.0 - cosTheta * cosTheta);
+      // Construct tangent space vector
+      const H = {
+        x: sinTheta * Math.cos(phi),
+        y: sinTheta * Math.sin(phi),
+        z: cosTheta,
+      };
+
+      // Tangent to world space
+      const upVector = Math.abs(N[2]) < 0.999 ? [0.0, 0.0, 1.0] : [1.0, 0.0, 0.0];
+
+      const tangent = glMatrix.vec3.create();
+      const bitangent = glMatrix.vec3.create();
+
+      glMatrix.vec3.cross(tangent, upVector, N);
+      glMatrix.vec3.normalize(tangent, tangent);
+      glMatrix.vec3.cross(bitangent, N, tangent);
+
+      glMatrix.vec3.scale(tangent, tangent, H.x);
+      glMatrix.vec3.scale(bitangent, bitangent, H.y);
+      const tmp = glMatrix.vec3.create();
+      glMatrix.vec3.scale(tmp, N, H.z);
+      
+      const result = glMatrix.vec3.create();
+      glMatrix.vec3.add(result, tangent, bitangent);
+      glMatrix.vec3.add(result, result, tmp);
+
+      return result;
+    }
+  </script>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const vs = `
+      attribute vec3 a_position;
+      attribute vec3 a_normal;
+      varying vec3 v_normal;
+      varying vec3 v_position;
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      void main() {
+        gl_Position = u_projectionMatrix * u_viewMatrix * vec4(a_position, 1);
+        gl_PointSize = 20.0;
+        v_normal = a_normal;
+        v_position = a_position;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      varying vec3 v_normal;
+      varying vec3 v_position;
+      uniform vec3 u_color;
+      uniform vec3 u_eye;
+      uniform float u_isPoint;
+      void main() {
+        if (u_isPoint == 1.0) {
+          if (length(gl_PointCoord - vec2(0.5)) > 0.5) {
+            discard;
+          }
+
+          gl_FragColor = vec4(u_color, 1);
+          return;
+        }
+
+        vec3 lightPos = vec3(1, 0, 2);
+        float lightIntensity = 1.0;
+        float r = 1.0;
+
+        vec3 eye = u_eye;
+        vec3 V = normalize(eye - v_position);
+        vec3 L = normalize(lightPos);
+        vec3 H = normalize(V + L);
+        vec3 N = normalize(v_normal);
+
+        float NdotL = clamp(dot(N, L), 0.0, 1.0);
+
+        vec3 L_d = u_color * lightIntensity / (r*r) * NdotL;
+        gl_FragColor = vec4(L_d, 1);
+      }
+    `;
+
+    let radius = 3, theta = 0, phi = 20;
+    const eye = [0, 2, 3];
+    const target = [0, 0, 0];
+    const up = [0, 0, 1];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+    const projectionMatrix = glMatrix.mat4.create();
+    const fovy = 45 / 180 * Math.PI;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 100;
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    const commonUniforms = {
+      u_viewMatrix: viewMatrix,
+      u_projectionMatrix: projectionMatrix,
+      u_eye: eye,
+    };
+
+    const parameters = {
+      NUM_SAMPLE: 512,
+      roughness: 0.5,
+      N: [0, 0, 255],
+    };
+    const gui = new dat.GUI();
+    gui.add(parameters, 'NUM_SAMPLE', 1, 1024);
+    gui.add(parameters, 'roughness', 0, 1);
+    gui.addColor(parameters, 'N');
+
+    const sphere = primitives.createSphereVertices(0.99, 100, 50);
+
+    const samplesPosition = [];
+
+    function update(ms) {
+      eye[2] = Math.sin(phi / 180 * Math.PI) * radius;
+      const xyRadius = Math.cos(phi / 180 * Math.PI) * radius;
+      eye[0] = xyRadius * Math.cos(theta / 180 * Math.PI);
+      eye[1] = xyRadius * Math.sin(theta / 180 * Math.PI);
+      glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+      
+      const NUM_SAMPLE = parameters.NUM_SAMPLE;
+      const roughness = parameters.roughness;
+      const N = [...parameters.N];
+      glMatrix.vec3.normalize(N, N);
+
+      samplesPosition.length = 0;
+      for (let i = 0; i < NUM_SAMPLE; i++) {
+        // FIXME: hammersley2d should return the range [0, 1]
+        // but the actual range is [-0.5, 0.5]
+        const Xi = hammersley2d(i, NUM_SAMPLE);
+        Xi[1] += 0.5;
+
+        const [x, y, z] = importanceSampleGGX(Xi, roughness, N);
+
+        samplesPosition.push(x, y, z);
+      }
+    }
+
+    function draw(ms) {
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+        depthTest: {
+          enable: true,
+          write: true
+        }
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+      });
+
+      // draw sphere
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: sphere.position,
+          a_normal: sphere.normal,
+        },
+        indices: sphere.indices,
+        uniforms: {
+          ...commonUniforms,
+          u_color: [0, 0.3, 1.0],
+          u_isPoint: 0.0,
+        },
+        count: sphere.indices.length,
+        primitiveType: gl.TRIANGLES
+      });
+
+      // draw plane
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: [
+            -2, -2, 0,
+             2, -2, 0,
+             2,  2, 0,
+            -2,  2, 0,
+          ],
+          a_normal: [
+            0, 0, 1,
+            0, 0, 1,
+            0, 0, 1,
+            0, 0, 1,
+          ],
+        },
+        indices: [0, 1, 2, 0, 2, 3],
+        uniforms: {
+          ...commonUniforms,
+          u_color: [0.6, 0.6, 0.6],
+          u_isPoint: 0.0,
+        },
+        count: 6,
+        primitiveType: gl.TRIANGLES
+      });
+
+      // draw points
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: samplesPosition,
+          a_normal: new Array(samplesPosition.length).fill(1),
+        },
+        uniforms: {
+          ...commonUniforms,
+          u_color: [1, 0, 0],
+          u_isPoint: 1.0,
+        },
+        count: parameters.NUM_SAMPLE,
+        primitiveType: gl.POINTS
+      });
+    }
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      update(ms);
+      draw(ms);
+    }
+
+    const canvasHandler = new WebGLUtils.CanvasHandler(gl.canvas);
+    canvasHandler.onwheel = function(direction) {
+      radius += direction * radius / 30;
+      radius = Math.max(2, radius);
+      radius = Math.min(10, radius);
+    };
+    canvasHandler.ondrag = function(deltaMovement) {
+      theta -= deltaMovement.x;
+      theta %= 360;
+      phi += deltaMovement.y / 2;
+      phi = Math.max(Math.min(89, phi), -89);
+    };
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
