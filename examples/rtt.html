@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Render to Texture</title>
+  <script src="../dist/toygl.js"></script>
+  <script src="./ThirdParty/gl-matrix-min.js"></script>
+  <script src="./ThirdParty/primitives.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const vs = `
+      attribute vec3 a_position;
+      attribute vec2 a_uv;
+      varying vec2 v_uv;
+      uniform mat4 u_modelMatrix;
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      void main() {
+        mat4 mvp = u_projectionMatrix * u_viewMatrix * u_modelMatrix;
+        gl_Position = mvp * vec4(a_position, 1);
+        v_uv = a_uv;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      uniform sampler2D u_texture;
+      uniform vec3 u_color;
+      varying vec2 v_uv;
+      void main() {
+        gl_FragColor = texture2D(u_texture, v_uv);
+        gl_FragColor.rgb *= u_color;
+      }
+    `;
+
+    const textureSize = 1024;
+    const colorTexture = ToyGL.createTexture(gl, {
+      level: 0,
+      width: textureSize,
+      height: textureSize,
+      internalFormat: gl.RGBA,
+      type: gl.UNSIGNED_BYTE,
+      format: gl.RGBA,
+      data: null,
+    });
+
+    const checkerboardTexture = ToyGL.createTexture(gl, {
+      level: 0,
+      width: 8,
+      height: 8,
+      internalFormat: gl.LUMINANCE,
+      format: gl.LUMINANCE,
+      type: gl.UNSIGNED_BYTE,
+      data: new Uint8Array([
+        0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+        0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF,
+        0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+        0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF,
+        0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+        0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF,
+        0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+        0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF,
+      ]),
+      magFilter: gl.NEAREST,
+    });
+
+    const framebuffer = ToyGL.createFramebuffer(gl, {
+      colorTexture: colorTexture,
+      depthRenderbuffer: {
+        width: textureSize,
+        height: textureSize,
+      }
+    });
+
+    const eye = [-2, 1, 1];
+    const target = [0, 0, 0];
+    const up = [0, 0, 1];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+    const rttViewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(rttViewMatrix, [0, -5, 0], target, up);
+
+    const projectionMatrix = glMatrix.mat4.create();
+    const fovy = 45 / 180 * Math.PI;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 100;
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    const rttProjectionMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.perspective(rttProjectionMatrix, fovy, 1, near, far);
+
+    const rtt1ModelMatrix = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), [0.5, 0, -0.2]);
+    const rtt2ModelMatrix = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), [0, 0, 1]);
+    const rtt3ModelMatrix = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), [-0.5, 0, -0.2]);
+    const modelMatrix = glMatrix.mat4.create();
+
+    const cube = primitives.createCubeVertices(1);
+
+    function drawCube(modelMatrix, viewMatrix, projectionMatrix, texture, color, framebuffer) {
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: cube.position,
+          a_uv: cube.texcoord,
+        },
+        indices: cube.indices,
+        uniforms: {
+          u_modelMatrix: modelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+          u_texture: texture,
+          u_color: color,
+        },
+        count: cube.indices.length,
+        fb: framebuffer,
+      });
+    }
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      const seconds = ms * 0.001;
+
+      /////////////////////////////////
+      // PASS 1: render to texture
+      /////////////////////////////////
+      glMatrix.mat4.rotate(rtt1ModelMatrix, rtt1ModelMatrix, Math.PI / 180, [0.5, 1, 0.5]);
+      glMatrix.mat4.rotate(rtt2ModelMatrix, rtt2ModelMatrix, Math.PI / 180, [1, -0.5, 1]);
+      glMatrix.mat4.rotate(rtt3ModelMatrix, rtt3ModelMatrix, Math.PI / 180, [0, -0.5, 1]);
+
+      ToyGL.setState(gl, {
+        cull: {
+          enable: true,
+          face: 'back'
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: [0, 0, textureSize, textureSize],
+      });
+
+      ToyGL.clear(gl, {
+        fb: framebuffer,
+        color: [0, 0.5, 0.8, 1],
+        depth: 1,
+      });
+
+      drawCube(rtt1ModelMatrix, rttViewMatrix, rttProjectionMatrix, checkerboardTexture, [1, 0, 0], framebuffer);
+      drawCube(rtt2ModelMatrix, rttViewMatrix, rttProjectionMatrix, checkerboardTexture, [0, 1, 0], framebuffer);
+      drawCube(rtt3ModelMatrix, rttViewMatrix, rttProjectionMatrix, checkerboardTexture, [0, 0, 1], framebuffer);
+
+      /////////////////////////////////
+      // PASS 2: render to canvas
+      /////////////////////////////////
+      glMatrix.mat4.rotate(modelMatrix, modelMatrix, Math.PI / 180 / 3, [0, 0, 1]);
+
+      ToyGL.setState(gl, {
+        cull: {
+          enable: true,
+          face: 'front'
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+      });
+
+      ToyGL.clear(gl, {
+        fb: undefined,
+        color: [0, 0.8, 0.5, 1],
+        depth: 1,
+      });
+
+      drawCube(modelMatrix, viewMatrix, projectionMatrix, colorTexture, [1, 1, 1], undefined);
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
