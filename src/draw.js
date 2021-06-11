@@ -67,7 +67,7 @@ function draw(gl, options) {
       const key = attribute.toString();
       let buffer = cachedBuffer[key];
       // TODO: 从 shader 中找出 size
-      const size = attributeName.includes('a_position') ? 3 : 2;
+      const size = attributeName.includes('position') || attributeName.includes('normal') ? 3 : 2;
       if (Array.isArray(attribute)) {
         // const size = vsSource.match(/attribute / + attributeName)
         

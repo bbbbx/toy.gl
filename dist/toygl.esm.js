@@ -311,8 +311,12 @@ function createTexture(gl, options) {
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texture);
 
-  const border = 0;
-  gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
+  if (data instanceof HTMLImageElement || data instanceof HTMLCanvasElement || data instanceof HTMLVideoElement) {
+    gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  } else {
+    const border = 0;
+    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
+  }
 
   // default texture settings
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -452,7 +456,7 @@ function draw(gl, options) {
       const key = attribute.toString();
       let buffer = cachedBuffer[key];
       // TODO: 从 shader 中找出 size
-      const size = attributeName.includes('a_position') ? 3 : 2;
+      const size = attributeName.includes('position') || attributeName.includes('normal') ? 3 : 2;
       if (Array.isArray(attribute)) {
         // const size = vsSource.match(/attribute / + attributeName)
         
