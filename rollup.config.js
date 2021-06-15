@@ -13,20 +13,15 @@ export default {
     {
       name: 'ToyGL',
       file: 'dist/toygl.js',
-      format: 'iife',
-      banner: banner,
-    },
-    {
-      name: 'ToyGL',
-      file: 'dist/toygl.esm.js',
-      format: 'esm',
+      format: 'umd',
       banner: banner,
     },
     {
       name: 'ToyGL',
       file: 'dist/toygl.min.js',
-      format: 'iife',
+      format: 'umd',
       banner: banner,
+      sourcemap: true,
       plugins: [ terser({
         output: {
           comments: function (node, comment) {
@@ -42,9 +37,16 @@ export default {
     },
     {
       name: 'ToyGL',
+      file: 'dist/toygl.esm.js',
+      format: 'esm',
+      banner: banner,
+    },
+    {
+      name: 'ToyGL',
       file: 'dist/toygl.esm.min.js',
       format: 'esm',
       banner: banner,
+      sourcemap: true,
       plugins: [ terser({
         output: {
           comments: function (node, comment) {

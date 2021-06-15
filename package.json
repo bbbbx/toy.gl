@@ -1,8 +1,12 @@
 {
-  "name": "toy.gl",
-  "version": "0.1.0",
-  "description": "A low level WebGL library.",
-  "main": "index.js",
+  "name": "toygl",
+  "version": "0.0.1",
+  "description": "A toy-level WebGL library.",
+  "main": "dist/toygl.js",
+  "module": "dist/toygl.esm.js",
+  "files": [
+    "dist"
+  ],
   "directories": {
     "example": "examples"
   },
@@ -23,7 +27,7 @@
     "WebGL",
     "toygl"
   ],
-  "author": "Venus",
+  "author": "Venus <venus@venusworld.cn>",
   "license": "MIT",
   "devDependencies": {
     "rollup": "^2.47.0",
