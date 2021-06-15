@@ -314,12 +314,8 @@ var ToyGL = (function () {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
-    if (data instanceof HTMLImageElement || data instanceof HTMLCanvasElement || data instanceof HTMLVideoElement) {
-      gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
-    } else {
-      const border = 0;
-      gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
-    }
+    const border = 0;
+    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
 
     // default texture settings
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -346,6 +342,67 @@ var ToyGL = (function () {
       } else {
         console.warn('createTexture: texture size is NOT power of two, current is ' + width + 'x' + height + '.');
       }
+    }
+
+    return texture;
+  }
+
+  function createCubeMap(gl, options) {
+    options = defaultValue(options, defaultValue.EMPTY_OBJECT);
+    const level = defaultValue(options.level, 0);
+    const data = options.data;
+    const width = options.width;
+    const height = options.height;
+    const format = defaultValue(options.format, gl.RGBA);
+    const type = defaultValue(options.type, gl.UNSIGNED_BYTE);
+    const internalFormat = defaultValue(options.internalFormat, gl.RGBA);
+
+    const texture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+
+    const faces = [
+      {
+        target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+        data: data.px,
+      },
+      {
+        target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+        data: data.nx,
+      },
+      {
+        target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+        data: data.py,
+      },
+      {
+        target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        data: data.ny,
+      },
+      {
+        target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+        data: data.pz,
+      },
+      {
+        target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
+        data: data.nz,
+      },
+    ];
+    
+    for (let i = 0; i < 6; i++) {
+      const face = faces[i];
+      const target = face.target;
+      const bufferView = face.data;
+      if (bufferView instanceof HTMLImageElement) {
+        gl.texImage2D(target, level, internalFormat, format, type, bufferView);
+      } else {
+        gl.texImage2D(target, level, internalFormat, width, height, 0, format, type, bufferView);
+      }
+
+      // default texture settings
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     }
 
     return texture;
@@ -404,6 +461,38 @@ var ToyGL = (function () {
   const cachedBuffer = {};
   const cachedTextures = {};
 
+  function getAttributeSize(activeAttribute) {
+    const { name, size, type } = activeAttribute;
+    let s = 0;
+    switch (type) {
+      case 5126: // gl.FLOAT
+        s = size * 1;
+        break;
+      case 35664: // gl.FLOAT_VEC2
+        s = 2 * size;
+        break;
+      case 35665: // gl.FLOAT_VEC3
+        s = 3 * size;
+        break;
+      case 35666: // gl.FLOAT_VEC4
+        s = 4 * size;
+        break;
+      case 35674: // gl.FLOAT_MAT2
+        s = 4 * size;
+        break;
+      case 35675: // gl.FLOAT_MAT3
+        s = 9 * size;
+        break;
+      case 35676: // gl.FLOAT_MAT4
+        s = 16 * size;
+        break;
+      default:
+        console.warn('无法识别 attribute ' + name + ' 的类型：' + type);
+    }
+
+    return s;
+  }
+
   function isArrayBufferView(value) {
     return value instanceof Float32Array ||
            value instanceof Uint8Array ||
@@ -447,7 +536,11 @@ var ToyGL = (function () {
     setCanvasToDisplaySize(gl.canvas);
 
     // attributes
-    for (const attributeName in attributes) {
+    const numberOfAttributes = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+    for (let i = 0; i < numberOfAttributes; i++) {
+      const activeAttribute = gl.getActiveAttrib(program, i);
+      const attributeName = activeAttribute.name;
+
       if (Object.hasOwnProperty.call(attributes, attributeName)) {
         const attribute = attributes[attributeName];
         const attribLocation = gl.getAttribLocation(program, attributeName);
@@ -458,15 +551,11 @@ var ToyGL = (function () {
 
         const key = attribute.toString();
         let buffer = cachedBuffer[key];
-        // TODO: 从 shader 中找出 size
-        const size = attributeName.includes('position') || attributeName.includes('normal') ? 3 : 2;
+        const size = getAttributeSize(activeAttribute);
         if (Array.isArray(attribute)) {
-          // const size = vsSource.match(/attribute / + attributeName)
-          
           // const isInteger = Number.isInteger(attribute[0]);
           // const typedArray = isInteger ? Uint32Array : Float32Array;
           const typedArray = Float32Array;
-          // console.log(buffer, typedArray)
           if (!buffer) {
             buffer = createAttributeBuffer(gl, new typedArray(attribute));
             cachedBuffer[key] = buffer;
@@ -504,9 +593,13 @@ var ToyGL = (function () {
     }
 
     // uniforms
+    const numberOfUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
     const maximumTextureUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
     let currentTextureUnit = 0;
-    for (const uniformName in uniforms) {
+    for (let i = 0; i < numberOfUniforms; i++) {
+      const activeUniform = gl.getActiveUniform(program, i);
+      const uniformName = activeUniform.name;
+      
       if (Object.hasOwnProperty.call(uniforms, uniformName)) {
         const uniform = uniforms[uniformName];
         const uniformLocation = gl.getUniformLocation(program, uniformName);
@@ -521,9 +614,16 @@ var ToyGL = (function () {
         const textureUnit = gl.TEXTURE0 + currentTextureUnit;
         if (uniform instanceof WebGLTexture) {
           gl.activeTexture(textureUnit);
-          gl.bindTexture(gl.TEXTURE_2D, uniform);
-          gl.uniform1i(uniformLocation, currentTextureUnit);
 
+          if (activeUniform.type === gl.SAMPLER_2D) {
+            gl.bindTexture(gl.TEXTURE_2D, uniform);
+          } else if (activeUniform.type === gl.SAMPLER_CUBE) {
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, uniform);
+          } else {
+            throw new Error(activeUniform, 'type MUST be SAMPLER_2D or SAMPLER_CUBE');
+          }
+
+          gl.uniform1i(uniformLocation, currentTextureUnit);
           currentTextureUnit++;
         } else if (isArrayLike(uniform)) {
           const size = uniform.length;
@@ -625,6 +725,7 @@ var ToyGL = (function () {
     clear,
     draw,
     createTexture,
+    createCubeMap,
     createFramebuffer,
   };
 
