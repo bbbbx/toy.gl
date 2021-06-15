@@ -13,22 +13,29 @@ const global = window;
  * @param {Boolean} contextOptions.preserveDrawingBuffer 
  * @param {Boolean} contextOptions.premultipliedAlpha 
  * @param {Boolean} contextOptions.requireWebgl2 
+ * @param {HTMLCanvasElement} contextOptions.canvas 
  * @returns 
  */
 function createContext(contextOptions) {
   contextOptions = defaultValue(contextOptions, defaultValue.EMPTY_OBJECT);
 
-  const canvas = global.document.createElement('canvas');
-  let gl;
+  let canvas = contextOptions.canvas;
+  if (!canvas) {
+    canvas = global.document.createElement('canvas');
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.setProperty('display', 'block');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
 
+  let gl;
   if (contextOptions.requireWebgl2) {
     gl = canvas.getContext('webgl2', contextOptions);
   } else {
     gl = canvas.getContext('webgl', contextOptions);
   }
 
-  canvas.style.setProperty('display', 'block');
-  setCanvasToDisplaySize(gl.canvas);
   return gl;
 };
 

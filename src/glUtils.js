@@ -47,13 +47,17 @@ function createProgram(gl, vertexShaderSource, fragmentShaderSource) {
 }
 
 function setCanvasToDisplaySize(canvas) {
-  const devicePixelRatio = global.devicePixelRatio;
-  const width = global.innerWidth;
-  const height = global.innerHeight;
-  canvas.width = width * devicePixelRatio; 
-  canvas.height = height * devicePixelRatio; 
-  canvas.style.setProperty('width', width + 'px');
-  canvas.style.setProperty('height', height + 'px');
+  const dpr = global.devicePixelRatio;
+  const displayWidth = Math.round(canvas.clientWidth * dpr);
+  const displayHeight = Math.round(canvas.clientHeight * dpr);
+
+  const needResize = canvas.width !== displayWidth ||
+                     canvas.height !== displayHeight;
+
+  if (needResize) {
+    canvas.width = displayWidth;
+    canvas.height = displayHeight;
+  }
 }
 
 function validateStencilFunc(func) {

@@ -84,7 +84,6 @@ function draw(gl, options) {
   }
 
   gl.useProgram(program);
-  setCanvasToDisplaySize(gl.canvas);
 
   // attributes
   const numberOfAttributes = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
