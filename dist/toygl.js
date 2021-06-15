@@ -4,10 +4,11 @@
  * Available via the MIT license.
  */
 
-var ToyGL = (function () {
-  'use strict';
-
-  const global$1 = window;
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+  typeof define === 'function' && define.amd ? define(factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ToyGL = factory());
+}(this, (function () { 'use strict';
 
   function createProgram(gl, vertexShaderSource, fragmentShaderSource) {
     const vs = gl.createShader(gl.VERTEX_SHADER);
@@ -53,16 +54,6 @@ var ToyGL = (function () {
     }
 
     return program;
-  }
-
-  function setCanvasToDisplaySize(canvas) {
-    const devicePixelRatio = global$1.devicePixelRatio;
-    const width = global$1.innerWidth;
-    const height = global$1.innerHeight;
-    canvas.width = width * devicePixelRatio; 
-    canvas.height = height * devicePixelRatio; 
-    canvas.style.setProperty('width', width + 'px');
-    canvas.style.setProperty('height', height + 'px');
   }
 
   function validateStencilFunc(func) {
@@ -118,22 +109,29 @@ var ToyGL = (function () {
    * @param {Boolean} contextOptions.preserveDrawingBuffer 
    * @param {Boolean} contextOptions.premultipliedAlpha 
    * @param {Boolean} contextOptions.requireWebgl2 
+   * @param {HTMLCanvasElement} contextOptions.canvas 
    * @returns 
    */
   function createContext(contextOptions) {
     contextOptions = defaultValue(contextOptions, defaultValue.EMPTY_OBJECT);
 
-    const canvas = global.document.createElement('canvas');
-    let gl;
+    let canvas = contextOptions.canvas;
+    if (!canvas) {
+      canvas = global.document.createElement('canvas');
+      canvas.style.width = '100vw';
+      canvas.style.height = '100vh';
+      canvas.style.setProperty('display', 'block');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
 
+    let gl;
     if (contextOptions.requireWebgl2) {
       gl = canvas.getContext('webgl2', contextOptions);
     } else {
       gl = canvas.getContext('webgl', contextOptions);
     }
 
-    canvas.style.setProperty('display', 'block');
-    setCanvasToDisplaySize(gl.canvas);
     return gl;
   }
 
@@ -314,8 +312,16 @@ var ToyGL = (function () {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
-    const border = 0;
-    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
+    if (
+      data instanceof HTMLImageElement ||
+      data instanceof HTMLCanvasElement ||
+      data instanceof HTMLVideoElement
+    ) {
+      gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    } else {
+      const border = 0;
+      gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
+    }
 
     // default texture settings
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -533,7 +539,6 @@ var ToyGL = (function () {
     }
 
     gl.useProgram(program);
-    setCanvasToDisplaySize(gl.canvas);
 
     // attributes
     const numberOfAttributes = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
@@ -731,4 +736,4 @@ var ToyGL = (function () {
 
   return ToyGL;
 
-}());
+})));
