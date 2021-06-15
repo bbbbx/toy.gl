@@ -14,16 +14,19 @@
     document.body.appendChild(gl.canvas);
 
     const vs = `
-      attribute vec3 a_position;
+      attribute vec2 a_position;
+      attribute vec3 a_color;
+      varying vec3 v_color;
       void main() {
-        gl_Position = vec4(a_position, 1);
+        gl_Position = vec4(a_position, 0, 1);
+        v_color = a_color;
       }
     `;
     const fs = `
       precision highp float;
-      uniform vec4 u_color;
+      varying vec3 v_color;
       void main() {
-        gl_FragColor = u_color;
+        gl_FragColor = vec4(v_color, 1);
       }
     `;
 
@@ -33,11 +36,11 @@
       const seconds = ms * 0.001;
 
       ToyGL.setState(gl, {
-        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+        viewport: [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight],
       });
 
       ToyGL.clear(gl, {
-        color: [0, 0.5, 0.7, 1]
+        color: [0, 0, 0, 1]
       });
 
       ToyGL.draw(gl, {
@@ -45,18 +48,15 @@
         fs: fs,
         attributes: {
           a_position: [
-            -0.5, -0.7, 0,
-             0.5, -0.7, 0,
-               0,  0.7, 0,
+           -0.6, -0.4,
+            0.6, -0.4,
+             0,  0.6,
           ],
-        },
-        uniforms: {
-          u_color: [
-            Math.sin(seconds) * 0.5 + 0.5,
-            Math.cos(seconds) * 0.5 + 0.5,
-            0,
-            1
-          ],
+          a_color: [
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1,
+          ]
         },
         count: 3,
       });
