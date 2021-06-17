@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cube</title>
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/gl-matrix-min.js"></script>
+  <script src="../ThirdParty/primitives.js"></script>
+  <script src="../ThirdParty/dat.gui.min.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    let vs, fs;
+    fetch('./vs.glsl').then(res => res.text()).then(text => vs = text);
+    fetch('./fs.glsl').then(res => res.text()).then(text => fs = text);
+
+    const parameters = {
+      metallic: 0.5,
+      roughness: 0.5,
+    };
+    // const gui = new dat.GUI();
+    // gui.add(parameters, 'metallic', 0, 1, 0.01);
+    // gui.add(parameters, 'roughness', 0, 1, 0.01);
+
+    const modelMatrix = glMatrix.mat4.create();
+
+    const eye = [0, 0, 20];
+    const target = [0, 0, 0];
+    const up = [0, 1, 0];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+    const projectionMatrix = glMatrix.mat4.create();
+    const fovy = 45 / 180 * Math.PI;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 100;
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    const sphere = primitives.createSphereVertices(0.5, 32, 16);
+
+    const urls = [
+      './irradiance/i_px.png',
+      './irradiance/i_nx.png',
+      './irradiance/i_py.png',
+      './irradiance/i_ny.png',
+      './irradiance/i_pz.png',
+      './irradiance/i_nz.png',
+    ];
+    const images = [];
+    let count = 0;
+    for (let i = 0; i < 6; i++) {
+      const url = urls[i];
+      const image = new Image();
+      image.src = url;
+      image.addEventListener('load', () => {
+        images[i] = image;
+        count++;
+      });
+    }
+
+    const IBLradianceUrls = [
+      [
+        './radiance/m0_px.png',
+        './radiance/m0_nx.png',
+        './radiance/m0_py.png',
+        './radiance/m0_ny.png',
+        './radiance/m0_pz.png',
+        './radiance/m0_nz.png',
+      ],
+      [
+        './radiance/m1_px.png',
+        './radiance/m1_nx.png',
+        './radiance/m1_py.png',
+        './radiance/m1_ny.png',
+        './radiance/m1_pz.png',
+        './radiance/m1_nz.png',
+      ],
+      [
+        './radiance/m2_px.png',
+        './radiance/m2_nx.png',
+        './radiance/m2_py.png',
+        './radiance/m2_ny.png',
+        './radiance/m2_pz.png',
+        './radiance/m2_nz.png',
+      ],
+      [
+        './radiance/m3_px.png',
+        './radiance/m3_nx.png',
+        './radiance/m3_py.png',
+        './radiance/m3_ny.png',
+        './radiance/m3_pz.png',
+        './radiance/m3_nz.png',
+      ],
+      [
+        './radiance/m4_px.png',
+        './radiance/m4_nx.png',
+        './radiance/m4_py.png',
+        './radiance/m4_ny.png',
+        './radiance/m4_pz.png',
+        './radiance/m4_nz.png',
+      ],
+    ];
+    const radianceImages = [];
+    let radianceCount = 0;
+    for (let i = 0; i < IBLradianceUrls.length; i++) {
+      const levelUrls = IBLradianceUrls[i];
+      for (let j = 0; j < levelUrls.length; j++) {
+        const url = levelUrls[j];
+        const image = new Image();
+        image.src = url;
+        image.addEventListener('load', () => {
+          radianceImages[i * 6 + j] = image;
+          radianceCount++;
+        });
+      }
+    }
+
+    let cubeMap;
+    const IBLradianceCubeMaps = [];
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      if (!vs || !fs) {
+        return;
+      }
+
+      if (radianceCount === (IBLradianceUrls.length * 6) && IBLradianceCubeMaps.length === 0) {
+        for (let i = 0; i < IBLradianceUrls.length; i++) {
+          const startIndex = i * 6;
+          const images = radianceImages.slice(startIndex, startIndex  + 6);
+          IBLradianceCubeMaps[i] = ToyGL.createCubeMap(gl, {
+            data: {
+              px: images[0],
+              nx: images[1],
+              py: images[2],
+              ny: images[3],
+              pz: images[4],
+              nz: images[5],
+            }
+          });
+        }
+        return;
+      }
+
+      if (count === 6 && !cubeMap) {
+        cubeMap = ToyGL.createCubeMap(gl, {
+          data: {
+            px: images[0],
+            nx: images[1],
+            py: images[2],
+            ny: images[3],
+            pz: images[4],
+            nz: images[5],
+          }
+        });
+        return;
+      }
+
+      if (!cubeMap || IBLradianceCubeMaps.length === 0) {
+        return;
+      }
+
+      // console.log(IBLradianceCubeMaps)
+
+      const seconds = ms * 0.001;
+
+      // update model matrix
+      glMatrix.mat4.create(modelMatrix);
+      // glMatrix.mat4.rotate(modelMatrix, modelMatrix, Math.PI / 180, [0, 1, 0]);
+      // eye[0] = Math.cos(seconds) * 30;
+      // eye[2] = Math.sin(seconds) * 30;
+      // glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+      // set global state
+      ToyGL.setState(gl, {
+        cull: {
+          enable: true,
+          face: 'back'
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+      });
+
+      ToyGL.clear(gl, {
+        color: [0.5, 0.5, 0.5, 1],
+        depth: 1,
+      });
+
+      function draw(modelMatrix, roughness, metallic) {
+        const normalMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.invert(normalMatrix, modelMatrix);
+        glMatrix.mat4.transpose(normalMatrix, normalMatrix);
+
+        const mipmapCount = 5;
+        const lod = roughness * (mipmapCount - 1);
+        const prevLod = Math.floor(lod);
+        const nextLod = prevLod + 1;
+
+        ToyGL.draw(gl, {
+          vs: vs,
+          fs: fs
+            .replace('${prevLod}', parseInt(prevLod).toString())
+            .replace('${nextLod}', parseInt(nextLod).toString()),
+          attributes: {
+            a_position: sphere.position,
+            a_uv: sphere.texcoord,
+            a_normal: sphere.normal,
+          },
+          indices: sphere.indices,
+          uniforms: {
+            u_modelMatrix: modelMatrix,
+            u_viewMatrix: viewMatrix,
+            u_projectionMatrix: projectionMatrix,
+            u_normalMatrix: normalMatrix,
+
+            u_eye: eye,
+
+            u_baseColor: [1, 1, 1, 1],
+            u_metallic: metallic,
+            u_roughness: roughness,
+
+            'u_light.color': [1, 1, 1],
+            'u_light.direction': [0, -1, 0],
+            'u_light.position': [0, 20, 20],
+            'u_light.intensity': 1,
+            'u_light.type': 0,
+
+            u_GGXLUT: './lut_ggx.png',
+            u_diffuseIrradiance: cubeMap,
+            u_specularRadiance0: IBLradianceCubeMaps[0],
+            u_specularRadiance1: IBLradianceCubeMaps[1],
+            u_specularRadiance2: IBLradianceCubeMaps[2],
+            u_specularRadiance3: IBLradianceCubeMaps[3],
+            u_specularRadiance4: IBLradianceCubeMaps[4],
+          },
+          count: sphere.indices.length,
+        });
+      }
+
+      // execute draw command
+      for (let metallic = 0; metallic <= 1; metallic += 0.1) {
+        for (let roughness = 0; roughness <= 1; roughness += 0.1) {
+          glMatrix.mat4.fromTranslation(modelMatrix, [roughness * 15 - 7.5, metallic * 15 - 7.5, 0]);
+          draw(modelMatrix, roughness, metallic);
+        }
+      }
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
