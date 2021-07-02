@@ -1,3 +1,5 @@
+import defaultValue from './defaultValue.js';
+
 const FRAMEBUFFER_STATUS = {
   36053: 'FRAMEBUFFER_COMPLETE',
   36054: 'FRAMEBUFFER_INCOMPLETE_ATTACHMENT',
@@ -8,14 +10,32 @@ const FRAMEBUFFER_STATUS = {
 
 function createFramebuffer(gl, options) {
   const { colorTexture, depthTexture, depthRenderbuffer } = options;
+  const colorAttachments = defaultValue(options.colorAttachments, [ colorTexture ])
 
   const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
 
   // color
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, colorTexture);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+  const colorAttachmentsLength = colorAttachments.length;
+  if (colorAttachmentsLength > 1) {
+    const ext = gl.getExtension('WebGL_draw_buffers');
+    ext.drawBuffersWEBGL([
+      ext.COLOR_ATTACHMENT0_WEBGL,
+      ext.COLOR_ATTACHMENT1_WEBGL,
+    ]);
+
+    for (let i = 0; i < colorAttachmentsLength; i++) {
+      const colorAttachment = colorAttachments[i];
+      gl.activeTexture(gl.TEXTURE0 + i);
+      gl.bindTexture(gl.TEXTURE_2D, colorAttachment);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, colorAttachment, 0);
+    }
+  } else {
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, colorTexture);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+  }
+  
 
   // depth
   if (depthTexture) {
