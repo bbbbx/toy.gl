@@ -97,14 +97,27 @@ export default function setState(gl, state) {
     }
 
     if (blend.blendEquation) {
-      gl.blendEquation(gl[blend.blendEquation.toUpperCase()]);
+      const equationName = blend.blendEquation.toUpperCase();
+      const equation = gl[equationName];
+      if (!defined(equation)) {
+        throw new Error(equationName + ' is not defined.');
+      }
+      gl.blendEquation(equation);
       // gl.blendEquation(modeRGB, modeAlpha)
     }
 
     if (blend.blendFunc) {
-      const src = blend.blendFunc[0].toUpperCase();
-      const dst = blend.blendFunc[1].toUpperCase();
-      gl.blendFunc(gl[src], gl[dst]);
+      const srcFuncName = blend.blendFunc[0].toUpperCase();
+      const dstFuncName = blend.blendFunc[1].toUpperCase();
+      const src = gl[srcFuncName];
+      const dst = gl[dstFuncName];
+      if (!defined(src)) {
+        throw new Error('gl.' + srcFuncName + ' is not defined.');
+      }
+      if (!defined(dst)) {
+        throw new Error('gl.' + dstFuncName + ' is not defined.');
+      }
+      gl.blendFunc(src, dst);
       // gl.blendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha)
     }
   }
