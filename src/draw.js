@@ -8,6 +8,28 @@ const cachedProgram = {};
 const cachedBuffer = {};
 const cachedTextures = {};
 
+function getNumberOfComponentsByType(type) {
+  let numberOfComponents = 0;
+
+  switch (type) {
+    case 5126: // gl.FLOAT
+      numberOfComponents = 1;
+      break;
+    case 35664: // gl.FLOAT_VEC2
+      numberOfComponents = 2;
+      break;
+    case 35665: // gl.FLOAT_VEC3
+      numberOfComponents = 3;
+      break;
+    case 35666: // gl.FLOAT_VEC4
+      numberOfComponents = 4;
+      break;
+    default:
+      throw new Error('Unrecognize ' + type + ' type.');
+  }
+  return numberOfComponents;
+}
+
 function getAttributeSize(activeAttribute) {
   const { name, size, type } = activeAttribute;
   let s = 0;
@@ -146,13 +168,30 @@ function draw(gl, options) {
   let currentTextureUnit = 0;
   for (let i = 0; i < numberOfUniforms; i++) {
     const activeUniform = gl.getActiveUniform(program, i);
-    const uniformName = activeUniform.name;
+    let uniformName = activeUniform.name;
+    let isUniformArray = false;
+
+    const indexOfBracket = uniformName.indexOf('[');
+    if (indexOfBracket >= 0) {
+      // "u_xxx[0]" => "u_xxx"
+      uniformName = uniformName.slice(0, indexOfBracket);
+      isUniformArray = true;
+    }
     
     if (Object.hasOwnProperty.call(uniforms, uniformName)) {
       const uniform = uniforms[uniformName];
       const uniformLocation = gl.getUniformLocation(program, uniformName);
 
       if (uniformLocation === null) {
+        continue;
+      }
+
+      // support float, vec[234] uniform array
+      if (isUniformArray) {
+        const type = activeUniform.type;
+        const numberOfComponents = getNumberOfComponentsByType(type);
+
+        gl['uniform' + numberOfComponents + 'fv'](uniformLocation, Array.from(uniform));
         continue;
       }
 
