@@ -232,14 +232,27 @@
       }
 
       if (blend.blendEquation) {
-        gl.blendEquation(gl[blend.blendEquation.toUpperCase()]);
+        const equationName = blend.blendEquation.toUpperCase();
+        const equation = gl[equationName];
+        if (!defined(equation)) {
+          throw new Error(equationName + ' is not defined.');
+        }
+        gl.blendEquation(equation);
         // gl.blendEquation(modeRGB, modeAlpha)
       }
 
       if (blend.blendFunc) {
-        const src = blend.blendFunc[0].toUpperCase();
-        const dst = blend.blendFunc[1].toUpperCase();
-        gl.blendFunc(gl[src], gl[dst]);
+        const srcFuncName = blend.blendFunc[0].toUpperCase();
+        const dstFuncName = blend.blendFunc[1].toUpperCase();
+        const src = gl[srcFuncName];
+        const dst = gl[dstFuncName];
+        if (!defined(src)) {
+          throw new Error('gl.' + srcFuncName + ' is not defined.');
+        }
+        if (!defined(dst)) {
+          throw new Error('gl.' + dstFuncName + ' is not defined.');
+        }
+        gl.blendFunc(src, dst);
         // gl.blendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha)
       }
     }
@@ -271,14 +284,32 @@
 
   function createFramebuffer(gl, options) {
     const { colorTexture, depthTexture, depthRenderbuffer } = options;
+    const colorAttachments = defaultValue(options.colorAttachments, [ colorTexture ]);
 
     const fb = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
 
     // color
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, colorTexture);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+    const colorAttachmentsLength = colorAttachments.length;
+    if (colorAttachmentsLength > 1) {
+      const ext = gl.getExtension('WebGL_draw_buffers');
+      ext.drawBuffersWEBGL([
+        ext.COLOR_ATTACHMENT0_WEBGL,
+        ext.COLOR_ATTACHMENT1_WEBGL,
+      ]);
+
+      for (let i = 0; i < colorAttachmentsLength; i++) {
+        const colorAttachment = colorAttachments[i];
+        gl.activeTexture(gl.TEXTURE0 + i);
+        gl.bindTexture(gl.TEXTURE_2D, colorAttachment);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, colorAttachment, 0);
+      }
+    } else {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, colorTexture);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+    }
+    
 
     // depth
     if (depthTexture) {
@@ -467,6 +498,28 @@
   const cachedBuffer = {};
   const cachedTextures = {};
 
+  function getNumberOfComponentsByType(type) {
+    let numberOfComponents = 0;
+
+    switch (type) {
+      case 5126: // gl.FLOAT
+        numberOfComponents = 1;
+        break;
+      case 35664: // gl.FLOAT_VEC2
+        numberOfComponents = 2;
+        break;
+      case 35665: // gl.FLOAT_VEC3
+        numberOfComponents = 3;
+        break;
+      case 35666: // gl.FLOAT_VEC4
+        numberOfComponents = 4;
+        break;
+      default:
+        throw new Error('Unrecognize ' + type + ' type.');
+    }
+    return numberOfComponents;
+  }
+
   function getAttributeSize(activeAttribute) {
     const { name, size, type } = activeAttribute;
     let s = 0;
@@ -603,13 +656,30 @@
     let currentTextureUnit = 0;
     for (let i = 0; i < numberOfUniforms; i++) {
       const activeUniform = gl.getActiveUniform(program, i);
-      const uniformName = activeUniform.name;
+      let uniformName = activeUniform.name;
+      let isUniformArray = false;
+
+      const indexOfBracket = uniformName.indexOf('[');
+      if (indexOfBracket >= 0) {
+        // "u_xxx[0]" => "u_xxx"
+        uniformName = uniformName.slice(0, indexOfBracket);
+        isUniformArray = true;
+      }
       
       if (Object.hasOwnProperty.call(uniforms, uniformName)) {
         const uniform = uniforms[uniformName];
         const uniformLocation = gl.getUniformLocation(program, uniformName);
 
         if (uniformLocation === null) {
+          continue;
+        }
+
+        // support float, vec[234] uniform array
+        if (isUniformArray) {
+          const type = activeUniform.type;
+          const numberOfComponents = getNumberOfComponentsByType(type);
+
+          gl['uniform' + numberOfComponents + 'fv'](uniformLocation, Array.from(uniform));
           continue;
         }
 
@@ -667,15 +737,6 @@
               gl.activeTexture(textureUnit);
               gl.bindTexture(gl.TEXTURE_2D, texture);
               gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-
-              if (isPowerOfTwo(image.width) && isPowerOfTwo(image.height)) {
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-                gl.generateMipmap(gl.TEXTURE_2D);
-              }
             });
 
             cachedTextures[uniform] = texture;
