@@ -16,38 +16,39 @@ function createFramebuffer(gl, options) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
 
   // color
+  gl.activeTexture(gl.TEXTURE0);
   const colorAttachmentsLength = colorAttachments.length;
   if (colorAttachmentsLength > 1) {
     const ext = gl.getExtension('WebGL_draw_buffers');
-    ext.drawBuffersWEBGL([
-      ext.COLOR_ATTACHMENT0_WEBGL,
-      ext.COLOR_ATTACHMENT1_WEBGL,
-    ]);
+    const drawBuffers = [];
+    for (let i = 0; i < colorAttachmentsLength; i++) {
+      drawBuffers.push(ext.COLOR_ATTACHMENT0_WEBGL + i);
+    }
+    ext.drawBuffersWEBGL(drawBuffers);
 
     for (let i = 0; i < colorAttachmentsLength; i++) {
       const colorAttachment = colorAttachments[i];
-      gl.activeTexture(gl.TEXTURE0 + i);
       gl.bindTexture(gl.TEXTURE_2D, colorAttachment);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, colorAttachment, 0);
     }
   } else {
-    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, colorTexture);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
   }
-  
+  gl.bindTexture(gl.TEXTURE_2D, null);
 
   // depth
   if (depthTexture) {
-    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, depthTexture);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
   }
   else if (depthRenderbuffer) {
     const renderbuffer = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
     gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, depthRenderbuffer.width, depthRenderbuffer.height);
     gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
   }
 
   const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);

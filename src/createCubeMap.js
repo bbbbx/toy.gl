@@ -58,6 +58,8 @@ function createCubeMap(gl, options) {
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   }
 
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+
   return texture;
 }
 

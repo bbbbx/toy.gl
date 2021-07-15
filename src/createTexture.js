@@ -46,6 +46,8 @@ function createTexture(gl, options) {
     }
   }
 
+  gl.bindTexture(gl.TEXTURE_2D, null);
+
   return texture;
 }
 
