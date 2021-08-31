@@ -1,3 +1,5 @@
+import defined from "./defined";
+
 const global = window;
 
 function createProgram(gl, vertexShaderSource, fragmentShaderSource) {
@@ -40,7 +42,6 @@ function createProgram(gl, vertexShaderSource, fragmentShaderSource) {
 
     log = gl.getProgramInfoLog(program);
     console.error('Shader program link log: ' + log);
-    throw new Error(info);
   }
 
   return program;
@@ -92,7 +93,16 @@ function validateStencilOp(op) {
   return false;
 }
 
+function validateGLConstantDefination(gl, constantName) {
+  const constant = gl[constantName];
+  if (!defined(constant)) {
+    throw new Error('gl.' + constantName + ' is not defined.');
+  }
+  return constant;
+}
+
 export {
+  validateGLConstantDefination,
   validateStencilFunc,
   validateStencilOp,
   createProgram,
