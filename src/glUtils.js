@@ -2,7 +2,15 @@ import defined from "./defined";
 
 const global = window;
 
-function createProgram(gl, vertexShaderSource, fragmentShaderSource) {
+/**
+ * Create a program and/or bind attribute location.
+ * @param {WebGLRenderingContext} gl 
+ * @param {String} vertexShaderSource 
+ * @param {String} fragmentShaderSource 
+ * @param {Object} attributeLocations { [attributeName]: location }
+ * @returns 
+ */
+function createProgram(gl, vertexShaderSource, fragmentShaderSource, attributeLocations) {
   const vs = gl.createShader(gl.VERTEX_SHADER);
   gl.shaderSource(vs, vertexShaderSource);
   gl.compileShader(vs);
@@ -18,13 +26,15 @@ function createProgram(gl, vertexShaderSource, fragmentShaderSource) {
   gl.deleteShader(vs);
   gl.deleteShader(fs);
 
-  // TODO:
-  // for (const attributeName in attributeLocation) {
-  //   if (Object.hasOwnProperty.call(attributeLocation, attributeName)) {
-  //     const location = attributeLocation[attributeName];
-  //     gl.bindAttribLocation(program, location, attributeName);
-  //   }
-  // }
+  // bind attribute location
+  if (defined(attributeLocations)) {
+    for (const attributeName in attributeLocations) {
+      if (Object.hasOwnProperty.call(attributeLocations, attributeName)) {
+        const location = attributeLocations[attributeName];
+        gl.bindAttribLocation(program, location, attributeName);
+      }
+    }
+  }
 
   gl.linkProgram(program);
 

@@ -5,6 +5,7 @@ import createFramebuffer from './createFramebuffer.js';
 import createTexture from './createTexture.js';
 import updateTexture from './updateTexture.js';
 import createCubeMap from './createCubeMap.js';
+import createVAO from './createVAO.js';
 import clear from './clear.js';
 import draw from './draw.js';
 
@@ -17,6 +18,7 @@ const ToyGL = {
   createTexture,
   updateTexture,
   createCubeMap,
+  createVAO,
   createFramebuffer,
 };
 

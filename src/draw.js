@@ -3,9 +3,14 @@ import defaultValue from './defaultValue.js';
 import {
   createProgram,
 } from './glUtils.js';
+import defined from './defined.js';
+import {
+  createAttributeBuffer,
+  createIndicesBuffer,
+  getIndicesType,
+} from './buffer.js';
 
 const cachedProgram = {};
-const cachedBuffer = {};
 const cachedTextures = {};
 
 function getNumberOfComponentsByType(type) {
@@ -56,41 +61,50 @@ function getAttributeSize(activeAttribute) {
       s = 16 * size;
       break;
     default:
-      console.warn('无法识别 attribute ' + name + ' 的类型：' + type);
+      console.warn(`Can not recognize attribute ${name} type, current type is ${type}`);
   }
 
   return s;
 }
 
-function isArrayBufferView(value) {
-  return value instanceof Float32Array ||
-         value instanceof Uint8Array ||
-         value instanceof Uint16Array ||
-         value instanceof Uint32Array ||
-         value instanceof Int8Array ||
-         value instanceof Int16Array ||
-         value instanceof Int32Array;
-
-}
-
-function createAttributeBuffer(gl, typedArray, usage) {
-  const buffer = gl.createBuffer();
-  usage = defaultValue(usage, gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, typedArray, usage);
-  return buffer;
-};
-
-function createIndicesBuffer(gl, typedArray, usage) {
-  const buffer = gl.createBuffer();
-  usage = defaultValue(usage, gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, typedArray, usage);
-  return buffer;
-};
-
+/**
+ * 
+ * @param {WebGLRenderingContext} gl 
+ * @param {Object} options 
+ * @param {String} options.vs
+ * @param {String} options.fs
+ * @param {Object} [options.attributeLocations]
+ * @param {Object} options.attributes 
+ * @param {WebGLVertexArrayObject} options.vao
+ * @param {Object} options.uniforms 
+ * @param {Array | Uint8Array | Uint16Array | Uint32Array} options.indices When using an Array, it is treated as Uint16Array, so if the maximum value of indices is greater then 65535, Uint32Array MUST be used.
+ * @param {Number} options.count
+ * @param {Number} [options.primitiveType=gl.TRIANGLES]
+ * @param {WebGLFramebuffer} [options.fb=null]
+ */
 function draw(gl, options) {
-  const { attributes, indices, vs: vsSource, fs: fsSource, count, fb } = options;
+  const {
+    attributes,
+    indices,
+    vao,
+    vs: vsSource,
+    fs: fsSource,
+    attributeLocations,
+    fb
+  } = options;
+
+  let count = options.count;
+  if (!defined(count) && defined(indices)) {
+    count = indices.length;
+  }
+  if (!defined(count)) {
+    throw new Error('vertices count or indices is not defined.');
+  }
+
+  if (defined(vao) && !defined(attributeLocations)) {
+    throw new Error('To use vao, you must defined attributeLocations.');
+  }
+
   const primitiveType = defaultValue(options.primitiveType, gl.TRIANGLES);
   const uniforms = defaultValue(options.uniforms, defaultValue.EMPTY_OBJECT);
 
@@ -99,7 +113,7 @@ function draw(gl, options) {
   const key = vsSource + fsSource;
   let program = cachedProgram[key];
   if (!program) {
-    program = createProgram(gl, vsSource, fsSource);
+    program = createProgram(gl, vsSource, fsSource, attributeLocations);
     cachedProgram[key] = program;
   }
 
@@ -107,30 +121,27 @@ function draw(gl, options) {
 
   // attributes
   const numberOfAttributes = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
-  for (let i = 0; i < numberOfAttributes; i++) {
-    const activeAttribute = gl.getActiveAttrib(program, i);
-    const attributeName = activeAttribute.name;
+  if (defined(vao)) {
 
-    if (Object.hasOwnProperty.call(attributes, attributeName)) {
-      const attribute = attributes[attributeName];
-      const attribLocation = gl.getAttribLocation(program, attributeName);
+    const ext = gl.getExtension('OES_vertex_array_object');
+    ext.bindVertexArrayOES(vao);
 
-      if (attribLocation === -1) {
-        continue;
-      }
+  } else if (defined(attributes)) {
 
-      const key = attribute.toString();
-      let buffer = cachedBuffer[key];
-      const size = getAttributeSize(activeAttribute);
-      if (Array.isArray(attribute)) {
-        // const isInteger = Number.isInteger(attribute[0]);
-        // const typedArray = isInteger ? Uint32Array : Float32Array;
-        const typedArray = Float32Array;
-        if (!buffer) {
-          buffer = createAttributeBuffer(gl, new typedArray(attribute));
-          cachedBuffer[key] = buffer;
+    for (let i = 0; i < numberOfAttributes; i++) {
+      const activeAttribute = gl.getActiveAttrib(program, i);
+      const attributeName = activeAttribute.name;
+
+      if (Object.hasOwnProperty.call(attributes, attributeName)) {
+        const attribute = attributes[attributeName];
+        const attribLocation = gl.getAttribLocation(program, attributeName);
+
+        if (attribLocation === -1) {
+          continue;
         }
 
+        const size = getAttributeSize(activeAttribute);
+        const buffer = createAttributeBuffer(gl, attribute, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.enableVertexAttribArray(attribLocation);
         gl.vertexAttribPointer(
@@ -141,25 +152,11 @@ function draw(gl, options) {
           0,
           0
         );
-      } else if (isArrayBufferView(attribute)) {
-        if (!buffer) {
-          buffer = createAttributeBuffer(gl, attribute);
-          cachedBuffer[key] = buffer;
-        }
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.enableVertexAttribArray(attribLocation);
-        gl.vertexAttribPointer(
-          attribLocation,
-          size,
-          gl.FLOAT,
-          false,
-          0,
-          0
-        );
       }
-
     }
+  } else {
+    throw new Error('vao or attributes must be defined.')
   }
 
   // uniforms
@@ -194,8 +191,6 @@ function draw(gl, options) {
         gl['uniform' + numberOfComponents + 'fv'](uniformLocation, Array.from(uniform));
         continue;
       }
-
-      // gl.useProgram(program);
 
       const typeOfUniform = typeof uniform;
       const textureUnit = gl.TEXTURE0 + currentTextureUnit;
@@ -265,32 +260,12 @@ function draw(gl, options) {
 
   // draw
   if (indices && indices.length > 0) {
-    let max = Number.MIN_SAFE_INTEGER;
-    for (const index of indices) {
-      max = Math.max(index, max);
-    }
-    let type, typedArray;
-    if (max <= 255) {
-      type = gl.UNSIGNED_BYTE;
-      typedArray = Uint8Array;
-    } else if (max <= 65535) {
-      type = gl.UNSIGNED_SHORT;
-      typedArray = Uint16Array;
-    } else {
-      type = gl.UNSIGNED_INT;
-      typedArray = Uint32Array;
-      gl.getExtension('OES_element_index_unit');
-    }
-
-    const key = indices.toString();
-    let buffer = cachedBuffer[key];
-    if (!buffer) {
-      buffer = createIndicesBuffer(gl, new typedArray(indices));
-      cachedBuffer[key] = buffer;
-    }
-
+    
+    const buffer = createIndicesBuffer(gl, indices, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
-    gl.drawElements(primitiveType, count, type, 0);
+
+    const indicesType = getIndicesType(indices);
+    gl.drawElements(primitiveType, count, indicesType, 0);
   } else {
     gl.drawArrays(primitiveType, 0, count);
   }
