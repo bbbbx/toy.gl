@@ -256,16 +256,14 @@ void main() {
     if (NdotL > 0.0 || NdotV > 0.0) {
       vec3 intensity = getLightIntensity(u_light, pointWC);
 
-      // diffuse += intensity * NdotL * BRDF_lambertian(f0, f90, diffuseColor, specularWeight, VdotH);
-      diffuse += intensity * NdotL * BRDF_diffuseOrenNayar(f0, f90, diffuseColor, specularWeight, VdotH, NdotV, NdotL, roughness);
+      vec3 brdf_diff = BRDF_lambertian(f0, f90, diffuseColor, specularWeight, VdotH);
+      // vec3 brdf_diff = BRDF_diffuseOrenNayar(f0, f90, diffuseColor, specularWeight, VdotH, NdotV, NdotL, roughness);
+      diffuse += intensity * NdotL * brdf_diff;
       specular += intensity * NdotL * BRDF_specularGGX(f0, f90, alphaRoughness, specularWeight, VdotH, NdotL, NdotV, NdotH);
     }
 
   vec3 color = diffuse + specular;
   gl_FragColor = vec4(color, 1);
 
-  // vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
-  // vec2 f_ab = texture2D(u_GGXLUT, brdfSamplePoint).rg;
-  // gl_FragColor = vec4(f_ab, 0, 1);
-  // gl_FragColor = vec4(roughness, 0, 0, 1);
+  // gl_FragColor = vec4(0, roughness, metallic, 1);
 }

@@ -20,14 +20,6 @@
     fetch('./vs.glsl').then(res => res.text()).then(text => vs = text);
     fetch('./fs.glsl').then(res => res.text()).then(text => fs = text);
 
-    const parameters = {
-      metallic: 0.5,
-      roughness: 0.5,
-    };
-    // const gui = new dat.GUI();
-    // gui.add(parameters, 'metallic', 0, 1, 0.01);
-    // gui.add(parameters, 'roughness', 0, 1, 0.01);
-
     const modelMatrix = glMatrix.mat4.create();
 
     const eye = [0, 0, 20];
@@ -38,10 +30,28 @@
 
     const projectionMatrix = glMatrix.mat4.create();
     const fovy = 45 / 180 * Math.PI;
-    const aspect = window.innerWidth / window.innerHeight;
+    let aspect = window.innerWidth / window.innerHeight;
     const near = 0.1;
     const far = 100;
     glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    const viewport = [0, 0, gl.canvas.width, gl.canvas.height];
+
+    resize();
+
+    function resize() {
+      const displayWidth = gl.canvas.clientWidth * window.devicePixelRatio;
+      const displayHeight = gl.canvas.clientHeight * window.devicePixelRatio;
+      viewport[2] = displayWidth;
+      viewport[3] = displayHeight;
+
+      gl.canvas.width = displayWidth;
+      gl.canvas.height = displayHeight;
+      aspect = displayWidth / displayHeight;
+      glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+    }
+
+    window.addEventListener('resize', resize);
 
     const sphere = primitives.createSphereVertices(0.5, 32, 16);
 
@@ -124,6 +134,7 @@
 
     let cubeMap;
     const IBLradianceCubeMaps = [];
+    let vao;
     function render(ms) {
       requestAnimationFrame(render);
 
@@ -163,20 +174,41 @@
         return;
       }
 
-      if (!cubeMap || IBLradianceCubeMaps.length === 0) {
+      if (!vao) {
+        vao = ToyGL.createVAO(gl, {
+          attributes: {
+            a_position: {
+              location: 0,
+              size: 3,
+              data: sphere.position,
+            },
+            a_normal: {
+              location: 1,
+              size: 3,
+              data: sphere.normal,
+            },
+            a_uv: {
+              location: 2,
+              size: 2,
+              data: sphere.texcoord,
+            },
+          },
+          indices: sphere.indices,
+        });
         return;
       }
 
-      // console.log(IBLradianceCubeMaps)
+      if (!cubeMap || IBLradianceCubeMaps.length === 0) {
+        return;
+      }
 
       const seconds = ms * 0.001;
 
       // update model matrix
       glMatrix.mat4.create(modelMatrix);
-      // glMatrix.mat4.rotate(modelMatrix, modelMatrix, Math.PI / 180, [0, 1, 0]);
-      // eye[0] = Math.cos(seconds) * 30;
-      // eye[2] = Math.sin(seconds) * 30;
-      // glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+      eye[0] = Math.cos(seconds) * 20;
+      eye[2] = Math.sin(seconds) * 20;
+      glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
 
       // set global state
       ToyGL.setState(gl, {
@@ -188,64 +220,13 @@
           enable: true,
           write: true,
         },
-        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+        viewport: viewport,
       });
 
       ToyGL.clear(gl, {
         color: [0.5, 0.5, 0.5, 1],
         depth: 1,
       });
-
-      function draw(modelMatrix, roughness, metallic) {
-        const normalMatrix = glMatrix.mat4.create();
-        glMatrix.mat4.invert(normalMatrix, modelMatrix);
-        glMatrix.mat4.transpose(normalMatrix, normalMatrix);
-
-        const mipmapCount = 5;
-        const lod = roughness * (mipmapCount - 1);
-        const prevLod = Math.floor(lod);
-        const nextLod = prevLod + 1;
-
-        ToyGL.draw(gl, {
-          vs: vs,
-          fs: fs
-            .replace('${prevLod}', parseInt(prevLod).toString())
-            .replace('${nextLod}', parseInt(nextLod).toString()),
-          attributes: {
-            a_position: sphere.position,
-            a_uv: sphere.texcoord,
-            a_normal: sphere.normal,
-          },
-          indices: sphere.indices,
-          uniforms: {
-            u_modelMatrix: modelMatrix,
-            u_viewMatrix: viewMatrix,
-            u_projectionMatrix: projectionMatrix,
-            u_normalMatrix: normalMatrix,
-
-            u_eye: eye,
-
-            u_baseColor: [1, 1, 1, 1],
-            u_metallic: metallic,
-            u_roughness: roughness,
-
-            'u_light.color': [1, 1, 1],
-            'u_light.direction': [0, -1, 0],
-            'u_light.position': [0, 20, 20],
-            'u_light.intensity': 1,
-            'u_light.type': 0,
-
-            u_GGXLUT: './lut_ggx.png',
-            u_diffuseIrradiance: cubeMap,
-            u_specularRadiance0: IBLradianceCubeMaps[0],
-            u_specularRadiance1: IBLradianceCubeMaps[1],
-            u_specularRadiance2: IBLradianceCubeMaps[2],
-            u_specularRadiance3: IBLradianceCubeMaps[3],
-            u_specularRadiance4: IBLradianceCubeMaps[4],
-          },
-          count: sphere.indices.length,
-        });
-      }
 
       // execute draw command
       for (let metallic = 0; metallic <= 1; metallic += 0.1) {
@@ -254,6 +235,57 @@
           draw(modelMatrix, roughness, metallic);
         }
       }
+    }
+
+    function draw(modelMatrix, roughness, metallic) {
+      const normalMatrix = glMatrix.mat4.create();
+      glMatrix.mat4.invert(normalMatrix, modelMatrix);
+      glMatrix.mat4.transpose(normalMatrix, normalMatrix);
+
+      const mipmapCount = 5;
+      const lod = roughness * (mipmapCount - 1);
+      const prevLod = Math.floor(lod);
+      const nextLod = prevLod + 1;
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs
+          .replace('${prevLod}', parseInt(prevLod).toString())
+          .replace('${nextLod}', parseInt(nextLod).toString()),
+        attributeLocations: {
+          a_position: 0,
+          a_normal: 1,
+          a_uv: 2,
+        },
+        vao: vao,
+        uniforms: {
+          u_modelMatrix: modelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+          u_normalMatrix: normalMatrix,
+
+          u_eye: eye,
+
+          u_baseColor: [1, 1, 1, 1],
+          u_metallic: metallic,
+          u_roughness: roughness,
+
+          'u_light.color': [1, 1, 1],
+          'u_light.direction': [0, -1, 0],
+          'u_light.position': [0, 20, 20],
+          'u_light.intensity': 1,
+          'u_light.type': 0,
+
+          u_GGXLUT: './lut_ggx.png',
+          u_diffuseIrradiance: cubeMap,
+          u_specularRadiance0: IBLradianceCubeMaps[0],
+          u_specularRadiance1: IBLradianceCubeMaps[1],
+          u_specularRadiance2: IBLradianceCubeMaps[2],
+          u_specularRadiance3: IBLradianceCubeMaps[3],
+          u_specularRadiance4: IBLradianceCubeMaps[4],
+        },
+        count: sphere.indices.length,
+      });
     }
 
     requestAnimationFrame(render);
