@@ -64,6 +64,7 @@ function createAttributeBuffer(gl, typedArrayOrArray, usage) {
   }
 
   buffer = createBuffer(gl, gl.ARRAY_BUFFER, typedArray, usage)
+  cachedBuffer[bufferKey] = buffer;
   return buffer;
 }
 
@@ -97,6 +98,7 @@ function createIndicesBuffer(gl, typedArrayOrArray, usage) {
   }
 
   buffer = createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, typedArray, usage);
+  cachedBuffer[bufferKey] = buffer;
   return buffer;
 }
 

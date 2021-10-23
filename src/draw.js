@@ -68,19 +68,19 @@ function getAttributeSize(activeAttribute) {
 }
 
 /**
- * 
+ * Execute a draw command.
  * @param {WebGLRenderingContext} gl 
  * @param {Object} options 
- * @param {String} options.vs
- * @param {String} options.fs
- * @param {Object} [options.attributeLocations]
- * @param {Object} options.attributes 
- * @param {WebGLVertexArrayObject} options.vao
- * @param {Object} options.uniforms 
- * @param {Array | Uint8Array | Uint16Array | Uint32Array} options.indices When using an Array, it is treated as Uint16Array, so if the maximum value of indices is greater then 65535, Uint32Array MUST be used.
- * @param {Number} options.count
- * @param {Number} [options.primitiveType=gl.TRIANGLES]
- * @param {WebGLFramebuffer} [options.fb=null]
+ * @param {String} options.vs Vertex shader text
+ * @param {String} options.fs Fragment shader text
+ * @param {Object} [options.attributes] use <code>attributes</code> or <code>vao</code> property.
+ * @param {WebGLVertexArrayObjectOES} [options.vao] @see {@link createVAO}
+ * @param {Object} [options.attributeLocations] If you define <code>vao</code> property, in order to correspond to attribute location of VAO, you must specify the location for the vertex attribute of shader program.
+ * @param {Object} [options.uniforms] The key of object is uniform name, value can be string(texture image file path), number, Array, ArrayBufferView. Uniform array is supported.
+ * @param {Array | Uint8Array | Uint16Array | Uint32Array} [options.indices] Vertex indices, when using an Array, it is treated as Uint16Array, so if the maximum value of indices is greater then 65535, Uint32Array MUST be used.
+ * @param {Number} [options.count=indices.length] The number of vertices.
+ * @param {Number} [options.primitiveType=gl.TRIANGLES] Primitive type. <code>gl.LINES</code>, <code>gl.POINTS</code>.
+ * @param {WebGLFramebuffer | null} [options.fb=null] See {@link createFramebuffer}.
  */
 function draw(gl, options) {
   const {
@@ -121,12 +121,20 @@ function draw(gl, options) {
 
   // attributes
   const numberOfAttributes = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+  const extVAO = gl.getExtension('OES_vertex_array_object');
   if (defined(vao)) {
-
-    const ext = gl.getExtension('OES_vertex_array_object');
-    ext.bindVertexArrayOES(vao);
+    if (extVAO) {
+      extVAO.bindVertexArrayOES(vao);
+    } else if (gl instanceof WebGL2RenderingContext) {
+      gl.bindVertexArray(vao);
+    } else {
+      throw new Error('this branch never should be executed.');
+    }
 
   } else if (defined(attributes)) {
+    if (extVAO) {
+      extVAO.bindVertexArrayOES(null);
+    }
 
     for (let i = 0; i < numberOfAttributes; i++) {
       const activeAttribute = gl.getActiveAttrib(program, i);
@@ -259,13 +267,15 @@ function draw(gl, options) {
   }
 
   // draw
+  const hasBoundElementArrayBuffer = gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING);
   if (indices && indices.length > 0) {
-    
     const buffer = createIndicesBuffer(gl, indices, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
 
     const indicesType = getIndicesType(indices);
     gl.drawElements(primitiveType, count, indicesType, 0);
+  } else if (hasBoundElementArrayBuffer) {
+    gl.drawElements(primitiveType, count, gl.UNSIGNED_SHORT, 0);
   } else {
     gl.drawArrays(primitiveType, 0, count);
   }
