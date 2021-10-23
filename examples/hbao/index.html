@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HBAO</title>
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/gl-matrix-min.js"></script>
+  <script src="../ThirdParty/dat.gui.min.js"></script>
+  <script src="../ThirdParty/stats.min.js"></script>
+  <script src="../ThirdParty/parseOBJ.js"></script>
+  <script src="../ThirdParty/parseMTL.js"></script>
+  <script src="./Mesh.js"></script>
+  <style>
+    html, body { margin: 0; }
+    #modal {
+      position: fixed;
+      background-color: rgba(123, 123, 123, 0.6);
+      width: 100vw;
+      height: 100vh;
+    }
+    #modal #text {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      font-size: 2em;
+      text-align: center;
+      transform: translate(-50%);
+    }
+    </style>
+</head>
+<body>
+  <div id="modal">
+    <div id="text">Assets Loading, Please Wait...</div>
+  </div>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const modal = document.getElementById('modal');
+
+    const QuadGeometry = {
+      position: [
+        -1, -1,
+        1, -1,
+        1, 1,
+        -1, 1,
+      ],
+      uv: [
+        0, 0,
+        1, 0,
+        1, 1,
+        0, 1,
+      ],
+      indices: [
+        0, 1, 2,
+        0, 2, 3,
+      ]
+    };
+
+    const attributeLocations = {
+      a_position: 0,
+      a_uv: 1,
+      a_normal: 2,
+    };
+
+    const randomTextureWidth = 1024;
+    const randomTextureHeight = 1024;
+    const randomData = new Uint8Array(randomTextureWidth * randomTextureHeight * 3);
+    for (let i = 0; i < randomData.length; i += 3) {
+      randomData[i] = Math.floor(Math.random() * 255);
+    }
+    const randomTexture = ToyGL.createTexture(gl, {
+      width: randomTextureWidth,
+      height: randomTextureHeight,
+      internalFormat: gl.RGB,
+      format: gl.RGB,
+      type: gl.UNSIGNED_BYTE,
+      data: randomData,
+    });
+
+    const depthTexture = ToyGL.createTexture(gl, {
+      data: null,
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      type: gl.UNSIGNED_INT,
+      format: gl.DEPTH_COMPONENT,
+      internalFormat: gl.DEPTH_COMPONENT,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+    });
+    const positionTexture = ToyGL.createTexture(gl, {
+      data: null,
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      type: gl.FLOAT,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+    });
+    const normalTexture = ToyGL.createTexture(gl, {
+      data: null,
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      type: gl.FLOAT,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+    });
+    const diffuseTexture = ToyGL.createTexture(gl, {
+      data: null,
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      type: gl.FLOAT,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+    });
+    const framebuffer = ToyGL.createFramebuffer(gl, {
+      colorAttachments: [positionTexture, normalTexture, diffuseTexture],
+      depthTexture: depthTexture,
+    });
+
+    const hbaoTexture = ToyGL.createTexture(gl, {
+      data: null,
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      type: gl.FLOAT,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+    });
+    const hbaoFramebuffer = ToyGL.createFramebuffer(gl, {
+      colorTexture: hbaoTexture,
+    });
+
+    const blurXTexture = ToyGL.createTexture(gl, {
+      data: null,
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      type: gl.FLOAT,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+    });
+    const blurXFramebuffer = ToyGL.createFramebuffer(gl, {
+      colorTexture: blurXTexture,
+    });
+    const blurYTexture = ToyGL.createTexture(gl, {
+      data: null,
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      type: gl.FLOAT,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+    });
+    const blurYFramebuffer = ToyGL.createFramebuffer(gl, {
+      colorTexture: blurYTexture,
+    });
+
+
+    let ready = false
+    const meshes = [];
+    const materials = {};
+    let quadVS = '';
+    let hbaoFS = '';
+    let blurFS = '';
+    let compositeFS = '';
+    let gbufferVS = '';
+    let gbufferFS = '';
+
+    Promise.all([
+      fetch('./sponza/sponza.obj').then(r => r.text()),
+      fetch('./sponza/sponza.mtl').then(r => r.text()),
+      fetch('./shaders/quadVS.glsl').then(r => r.text()),
+      fetch('./shaders/hbaoFS.glsl').then(r => r.text()),
+      fetch('./shaders/blurFS.glsl').then(r => r.text()),
+      fetch('./shaders/compositeFS.glsl').then(r => r.text()),
+      fetch('./shaders/gbufferVS.glsl').then(r => r.text()),
+      fetch('./shaders/gbufferFS.glsl').then(r => r.text()),
+    ]).then(text => {
+      const [ obj, mtl, _quadVS, _hbaoFS, _blurFS, _compositeFS, _gbufferVS, _gbufferFS ] = text;
+      quadVS = _quadVS;
+      hbaoFS = _hbaoFS;
+      blurFS = _blurFS;
+      compositeFS = _compositeFS;
+      gbufferVS = _gbufferVS;
+      gbufferFS = _gbufferFS;
+
+      const materials = parseMTL(mtl);
+      const { objects, positions, texcoords, normals } = parseOBJ(obj);
+
+      // 给图片路径添加前缀
+      Object.values(materials).forEach(material => {
+        const map_Kd = material.map_Kd;
+        if (map_Kd) {
+          material.map_Kd = './sponza/' + map_Kd;
+        }
+      });
+
+      for (const objName of Object.keys(objects)) {
+        const obj = objects[objName];
+        for (const groupNames of Object.keys(obj)) {
+          const group = obj[groupNames];
+          for (const materialName of Object.keys(group)) {
+            const { triangles, lines } = group[materialName];
+            const triPositionIndices = triangles.positionIndices;
+            const triTexcoordIndices = triangles.texcoordIndices;
+            const triNormalIndices = triangles.normalIndices;
+
+            if (triPositionIndices.length === 0) {
+              continue;
+            }
+
+            const unpackedPositions = [];
+            const unpackedUvs = [];
+            const unpackedNormals = [];
+
+            triPositionIndices.forEach(index => {
+              const x = positions[3 * index];
+              const y = positions[3 * index + 1];
+              const z = positions[3 * index + 2];
+              unpackedPositions.push(x, y, z);
+            });
+
+            triTexcoordIndices.forEach(index => {
+              const u = texcoords[2 * index];
+              const v = texcoords[2 * index + 1];
+              unpackedUvs.push(u, v);
+            });
+
+            triNormalIndices.forEach(index => {
+              const x = normals[3 * index];
+              const y = normals[3 * index + 1];
+              const z = normals[3 * index + 2];
+              unpackedNormals.push(x, y, z);
+            });
+
+            for (let i = 0; i < unpackedPositions.length; i += 9) {
+              const p0 = unpackedPositions.slice(i, i + 3);
+              const p1 = unpackedPositions.slice(i + 3, i + 6);
+              const p2 = unpackedPositions.slice(i + 6, i + 9);
+
+              const p0Top1 = glMatrix.vec3.subtract([], p1, p0);
+              const p0Top2 = glMatrix.vec3.subtract([], p2, p0);
+              const n0 = glMatrix.vec3.cross([], p0Top1, p0Top2);
+              glMatrix.vec3.normalize(n0, n0);
+              unpackedNormals.push(...n0, ...n0, ...n0);
+            }
+
+            const mesh = new Mesh({
+              positions: unpackedPositions,
+              uvs: unpackedUvs,
+              normals: unpackedNormals,
+            });
+            const material = materials[materialName];
+            const { map_Kd, Kd } = material;
+            mesh.Kd = Kd;
+
+            if (map_Kd) {
+              const image = new Image();
+              image.src = map_Kd;
+              image.onload = () => {
+                const texture = ToyGL.createTexture(gl, {
+                  data: image,
+                });
+
+                mesh.texture = texture;
+              };
+            }
+
+            meshes.push(mesh);
+          }
+        }
+      }
+
+      ready = true;
+      modal.style.visibility = 'hidden';
+      return;
+    });
+
+    const modelMatrix = glMatrix.mat4.create();
+    const inverseTranspose = glMatrix.mat4.create();
+    const normalMatrix = glMatrix.mat3.create();
+    glMatrix.mat4.invert(inverseTranspose, modelMatrix);
+    glMatrix.mat4.transpose(inverseTranspose, inverseTranspose);
+    glMatrix.mat3.fromMat4(normalMatrix, inverseTranspose);
+
+    const eye = [11, 2, 0];
+    const target = [0, 3, 1];
+    const up = [0, 1, 0];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+    const inverseViewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.invert(inverseViewMatrix, viewMatrix);
+
+    const fovy = 40 / 180 * Math.PI;
+    let aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 50;
+    const projectionMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+    const inverseProjectionMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.invert(inverseProjectionMatrix, projectionMatrix);
+
+    const parameters = {
+      delta: 1,
+      sigma: 1,
+      output: 'withHBAO',
+      bias: 0.1,
+      lengthGap: 0.26,
+      stepSize: 1.95,
+      intensity: 1,
+      cameraRotation: false,
+    };
+    const OUTPUT_MAP = {
+      withHBAO: 0,
+      withoutHBAO: 1,
+      onlyHBAO: 2,
+      blurHBAO: 3,
+      depth: 4,
+      normal: 5,
+    };
+
+    const gui = new dat.GUI();
+    gui.add(parameters, 'output', {
+      'With HBAO': 'withHBAO',
+      'Without HBAO': 'withoutHBAO',
+      'Only HBAO': 'onlyHBAO',
+      'Blur HBAO': 'blurHBAO',
+      'Depth': 'depth',
+      'Normal': 'normal',
+    }).name('Output');
+    const eyeFolder = gui.addFolder('Eye');
+    eyeFolder.open();
+    eyeFolder.add(eye, '0', -20, 20).name('X');
+    eyeFolder.add(eye, '1', -20, 30).name('Y');
+    eyeFolder.add(eye, '2', -20, 20).name('Z');
+    eyeFolder.add(parameters, 'cameraRotation', false).name('Rotate');
+
+
+    const hbaoFolder = gui.addFolder('HBAO Parameters');
+    hbaoFolder.open();
+    hbaoFolder.add(parameters, 'bias', 0, 1).name('Bias');
+    hbaoFolder.add(parameters, 'lengthGap', 0, 1).name('Length of Gap');
+    hbaoFolder.add(parameters, 'stepSize', 0, 10).name('Step Size');
+    hbaoFolder.add(parameters, 'intensity', 0, 10).name('Intensity');
+
+    const blurFolder = gui.addFolder('Blur Parameters');
+    blurFolder.add(parameters, 'delta', 0, 2);
+    blurFolder.add(parameters, 'sigma', 0, 2);
+
+    var stats = new Stats();
+    stats.showPanel(0);
+    document.body.appendChild(stats.dom);
+
+    function render(ms) {
+      stats.begin();
+
+      if (ready === false) {
+        requestAnimationFrame(render);
+        return;
+      }
+
+      const seconds = ms / 1000;
+
+      glMatrix.mat4.invert(inverseTranspose, modelMatrix);
+      glMatrix.mat4.transpose(inverseTranspose, inverseTranspose);
+      glMatrix.mat3.fromMat4(normalMatrix, inverseTranspose);
+
+      if (parameters.cameraRotation) {
+        eye[0] = 5 * Math.cos(seconds / 3);
+        eye[2] = 5 * Math.sin(seconds / 3);
+      }
+      glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+      glMatrix.mat4.invert(inverseViewMatrix, viewMatrix);
+
+
+      // 1. generate G-buffer
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+        cull: {
+          enable: true,
+        },
+        depthTest: {
+          enable: true,
+        }
+      });
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: framebuffer,
+      });
+      for (const mesh of meshes) {
+        mesh.update(gl);
+
+        ToyGL.draw(gl, {
+          vs: gbufferVS,
+          fs: gbufferFS,
+          attributeLocations: attributeLocations,
+          vao: mesh.vao,
+          uniforms: {
+            u_modelMatrix: modelMatrix,
+            u_viewMatrix: viewMatrix,
+            u_projectionMatrix: projectionMatrix,
+            u_normalMatrix: normalMatrix,
+            u_diffuse: mesh.Kd,
+            u_diffuseMap: mesh.texture,
+          },
+          count: mesh.numberOfVertices,
+          fb: framebuffer,
+        });
+      }
+
+      // 2. generate HBAO texture
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: hbaoFramebuffer,
+      });
+
+      ToyGL.draw(gl, {
+        vs: quadVS,
+        fs: hbaoFS,
+        attributes: {
+          a_position: QuadGeometry.position,
+          a_uv: QuadGeometry.uv,
+        },
+        indices: QuadGeometry.indices,
+        uniforms: {
+          u_depthTexture: depthTexture,
+          u_positionTexture: positionTexture,
+          u_normalTexture: normalTexture,
+          u_diffuseTexture: diffuseTexture,
+          u_randomTexture: randomTexture,
+          u_inverseView: inverseViewMatrix,
+          u_inverseProjectionMatrix: inverseProjectionMatrix,
+          u_resolution: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+          u_pixelRatio: window.devicePixelRatio,
+
+          u_lengthGap: parameters.lengthGap,
+          u_bias: parameters.bias,
+          u_stepSize: parameters.stepSize,
+          u_intensity: parameters.intensity,
+        },
+        fb: hbaoFramebuffer,
+      });
+
+      // 3. blur hbaoTexture along X direction
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: blurXFramebuffer,
+      });
+      ToyGL.draw(gl, {
+        vs: quadVS,
+        fs: blurFS,
+        attributes: {
+          a_position: QuadGeometry.position,
+          a_uv: QuadGeometry.uv,
+        },
+        indices: QuadGeometry.indices,
+        uniforms: {
+          u_texture: hbaoTexture,
+          u_resolution: [gl.canvas.width, gl.canvas.height],
+          u_delta: parameters.delta,
+          u_sigma: parameters.sigma,
+          u_direction: 0.0,
+        },
+        fb: blurXFramebuffer,
+      });
+
+      // 4. blur hbaoTexture along Y direction
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: blurYFramebuffer,
+      });
+      ToyGL.draw(gl, {
+        vs: quadVS,
+        fs: blurFS,
+        attributes: {
+          a_position: QuadGeometry.position,
+          a_uv: QuadGeometry.uv,
+        },
+        indices: QuadGeometry.indices,
+        uniforms: {
+          u_texture: blurXTexture,
+          u_resolution: [gl.canvas.width, gl.canvas.height],
+          u_delta: parameters.delta,
+          u_sigma: parameters.sigma,
+          u_direction: 1.0,
+        },
+        fb: blurYFramebuffer,
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: null,
+      });
+
+      // 5. final composition
+      ToyGL.draw(gl, {
+        vs: quadVS,
+        fs: `
+          #define OUTPUT ${OUTPUT_MAP[parameters.output]}
+          ${compositeFS}
+        `,
+        attributes: {
+          a_position: QuadGeometry.position,
+          a_uv: QuadGeometry.uv,
+        },
+        indices: QuadGeometry.indices,
+        uniforms: {
+          u_blurTexture: blurYTexture,
+          u_hbaoTexture: hbaoTexture,
+          u_diffuseTexture: diffuseTexture,
+          u_depthTexture: depthTexture,
+          u_normalTexture: normalTexture,
+          u_inverseProjectionMatrix: inverseProjectionMatrix,
+          u_nearFar: [near, far],
+        },
+        fb: null,
+      });
+
+      stats.end();
+
+      requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
