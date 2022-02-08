@@ -19,6 +19,8 @@ import defaultValue from './defaultValue.js';
  * @param {Number} [options.wrapT=CLAMP_TO_EDGE]
  * @param {Number} [options.minFilter=LINEAR]
  * @param {Number} [options.magFilter=LINEAR]
+ * @param {Number} [options.flipY=false] Only valid for DOM-Element uploads
+ * @param {Number} [options.premultiplyAlpha=false] Only valid for DOM-Element uploads
  * @returns {WebGLTexture}
  */
 function createTexture(gl, options) {
@@ -33,6 +35,11 @@ function createTexture(gl, options) {
   if (!levels) {
     levels = [ data ];
   }
+
+  const flipY = defaultValue(options.flipY, false);
+  const premultiplyAlpha = defaultValue(options.premultiplyAlpha, false);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiplyAlpha);
 
   const texture = gl.createTexture();
 
