@@ -20,8 +20,7 @@
    * @param {String} vertexShaderSource 
    * @param {String} fragmentShaderSource 
    * @param {Object} attributeLocations { [attributeName]: location }
-   * @returns {WebGLProgram}
-   * @ignore
+   * @returns 
    */
   function createProgram(gl, vertexShaderSource, fragmentShaderSource, attributeLocations) {
     const vs = gl.createShader(gl.VERTEX_SHADER);
@@ -110,11 +109,11 @@
     return constant;
   }
 
-  function defaultValue(value, fallbackValue) {
-    if (value === null || value === undefined) {
-      return fallbackValue;
+  function defaultValue(a, b) {
+    if (a === null || a === undefined) {
+      return b;
     }
-    return value;
+    return a;
   }
 
   defaultValue.EMPTY_OBJECT = Object.freeze({});
@@ -124,19 +123,15 @@
   /**
    * Create an instance of WebGLRenderingContext or WebGL2RenderingContext.
    * @param {Object} contextOptions 
-   * @param {Boolean} [contextOptions.alpha=true] 
-   * @param {Boolean} [contextOptions.depth=true] 
-   * @param {Boolean} [contextOptions.stencil=false] 
-   * @param {Boolean} [contextOptions.antialias=true] 
-   * @param {Boolean} [contextOptions.premultipliedAlpha=true] 
-   * @param {Boolean} [contextOptions.preserveDrawingBuffer=false] 
-   * @param {Boolean} [contextOptions.requireWebgl2=false] 
-   * @param {HTMLCanvasElement} [contextOptions.canvas] 
-   * @returns {WebGLRenderingContext}
-   * 
-   * @example
-   * // create a fullscreen WebGLRenderingContext
-   * const gl = ToyGL.createContext();
+   * @param {Boolean} contextOptions.alpha 
+   * @param {Boolean} contextOptions.depth 
+   * @param {Boolean} contextOptions.stencil 
+   * @param {Boolean} contextOptions.antialias 
+   * @param {Boolean} contextOptions.preserveDrawingBuffer 
+   * @param {Boolean} contextOptions.premultipliedAlpha 
+   * @param {Boolean} contextOptions.requireWebgl2 
+   * @param {HTMLCanvasElement} contextOptions.canvas 
+   * @returns 
    */
   function createContext(contextOptions) {
     contextOptions = defaultValue(contextOptions, defaultValue.EMPTY_OBJECT);
@@ -194,62 +189,8 @@
     }
   }
 
-  /**
-   * Set render state, includes cull depthTest, stencilTest, colorMask, blend, viewport, depthRange, scissor, polygonOffset, sampleCoverage and dither.
-   * @param {WebGLRenderbuffer} gl 
-   * @param {Object} state 
-   * @param {Object} [state.cull] 
-   * @param {Boolean} [state.cull.enable] Whether to perform faces culling.
-   * @param {'back' | 'front' | 'front_and_back'} [state.cull.face] Culling which face. Case is unsensitive.
-   * @param {'ccw' | 'cw'} [state.cull.frontFace] Short for counter-clock wise and clock wise. Case is unsensitive.
-   * @param {Object} [state.depthTest] 
-   * @param {Boolean} [state.depthTest.enable] Whether to perform depth test.
-   * @param {'less' | 'greater' | 'always' | 'never' | 'equal' | 'notequal' | 'lequal' | 'gequal'} [state.depthTest.func] The function is used to compare fragment depth value with depth buffer. Returning true means depth test passed. Case is unsensitive.
-   * @param {Boolean} [state.depthTest.write] Whether write the fragment depth value to depth buffer.
-   * @param {Object} [state.stencilTest] ref func storedStencilValue, if pass then write (writeMask & ref) to storedStencilValue
-   * @param {Object} [state.stencilTest.enable] Whether to perform stencil test.
-   * @param {Object} [state.stencilTest.front] Front face
-   * @param {Number} [state.stencilTest.front.writeMask=all 1] Mask used for writing stencil buffer.
-   * @param {String} [state.stencilTest.front.func] Test function for stencil test, same as <code>depthTest.func</code> property.
-   * @param {Number} [state.stencilTest.front.ref=0] Reference value for stencil test.
-   * @param {Number} [state.stencilTest.front.valueMask=all 1] A bit-wise mask that is used to AND the reference value and the stored stencil value when the test is done.
-   * @param {'keep' | 'zero' | 'replace' | 'incr' | 'decr' | 'incr_wrap' | 'decr_wrap' | 'invert'} [state.stencilTest.front.fail='keep'] What to do for stencil buffer when the stencil test fails.
-   * @param {String} [state.stencilTest.front.zfail] What to do for stencil buffer when the stencil test passes and the depth test fails.
-   * @param {String} [state.stencilTest.front.zpass] What to do for stencil buffer when both the stencil test and the depth test pass.
-   * @param {Object} [state.stencilTest.back] Same as <code>stencilTest.front</code>, but for back face.
-   * @param {Array.<Boolean>} [state.colorMask] Sets which color components to enable or to disable when drawing or rendering to a <code>WebGLFramebuffer</code>.
-   * @param {Object} [state.blend] 
-   * @param {Boolean} [state.blend.enable] 
-   * @param {Array.<Number>} [state.blend.blendColor] <code>[red, green, blue, alpha]</code>, set constant color.
-   * @param {'func_add' | 'func_subtract' | 'func_reverse_subtract'} [state.blend.blendEquation] set both RGB and Alpha
-   * @param {Object} [state.blend.blendEquationSeparate] set RGB and Alpha separately
-   * @param {String} [state.blend.blendEquationSeparate.rgb] same as <code>blend.blendEquation</code>
-   * @param {String} [state.blend.blendEquationSeparate.alpha] same as <code>blend.blendEquation</code>
-   * @param {Array.<String>} [state.blend.blendFunc] <code>[srcFactor, dstFactor]</code>, see <code>srcRGB</code> and <code>dstRGB</code>
-   * @param {Object} [state.blend.blendFuncSeparate] set RGB and Alpha separately
-   * @param {String} [state.blend.blendFuncSeparate.srcRGB] <code>blendFuncSeparate.dstRGB</code> and 'src_alpha_saturate'
-   * @param {String} [state.blend.blendFuncSeparate.dstRGB] 'zero' | 'one' | 'src_color' | 'src_alpha' | 'dst_color' | 'dst_alpha' | 'constant_color' | 'constant_alpha' and with 'one_minus_' prefix.
-   * @param {String} [state.blend.blendFuncSeparate.srcAlpha] Same as <code>srcRGB</code>
-   * @param {String} [state.blend.blendFuncSeparate.dstAlpha] Same as <code>dstRGB</code>
-   * @param {Array.<Number>} [state.viewport] <code>[x, y, width, height]</code>, which specifies the affine transformation of x and y from NDC to window coordinates.
-   * @param {Array.<Number>} [state.depthRange] <code>[near, far]</code>, which specifies the depth range mapping from NDC to window or viewport coordinates.
-   * @param {Object} [state.scissor] Scissor test
-   * @param {Boolean} [state.scissor.enable] Whether enable scissor test.
-   * @param {Array.<Number>} [state.scissor.rect] <code>[x, y, width, height]</code>, sets a scissor box, which limits the drawing to a specified rectangle.
-   * @param {Object} [state.polygonOffset] Polygon(Triangle) depth offset
-   * @param {Object} [state.polygonOffset.enable] Whether enable polygon depth offset.
-   * @param {Object} [state.polygonOffset.factor] 
-   * @param {Object} [state.polygonOffset.units] 
-   * @param {Object} [state.sampleCoverage] 
-   * @param {Boolean} [state.sampleCoverage.alphaToCoverage] 
-   * @param {Boolean} [state.sampleCoverage.enable] 
-   * @param {Number} [state.sampleCoverage.value] 
-   * @param {Boolean} [state.sampleCoverage.invert] 
-   * @param {Boolean} [state.dither] Whether enable dither.
-   * 
-   */
   function setState(gl, state) {
-    const { cull, depthTest, stencilTest, colorMask, blend, viewport, depthRange, scissor, polygonOffset, sampleCoverage, dither } = state;
+    const { depthTest, stencilTest, colorMask, cull, blend, viewport, scissor, polygonOffset, sampleCoverage, dither } = state;
 
     if (cull) {
       if (cull.enable) {
@@ -295,7 +236,7 @@
         gl.disable(gl.STENCIL_TEST);
       }
 
-      // pass = (ref & readMask) func (stencilValue & readMask)
+      // pass = (ref & readMask) func (stencilValue & redMask)
       // If the stencil test fails, the incoming fragment is discarded
       // if (!pass)
            // update stencilValue
@@ -394,10 +335,6 @@
 
     if (viewport) {
       gl.viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-    }
-
-    if (depthRange) {
-      gl.depthRange(depthRange[0], depthRange[1]);
     }
 
     if (scissor) {
@@ -581,13 +518,15 @@
     // UNPACK_COLORSPACE_CONVERSION_WEBGL
     37444: 'BROWSER_DEFAULT_WEBGL',
 
+    BYTE: 0x1400,
+    UNSIGNED_BYTE: 0x1401,
+    SHORT: 0x1402,
+    UNSIGNED_SHORT: 0x1403,
+    INT: 0x1404,
+    UNSIGNED_INT: 0x1405,
+    FLOAT: 0x1406,
   };
 
-  /**
-   * Get inner render state and GL limitation.
-   * @param {WebGLRenderingContext} gl 
-   * @returns {Object}
-   */
   function getState(gl) {
     // cull face-related state
     const cullFaceEnabled = gl.getParameter(gl.CULL_FACE);
@@ -855,16 +794,6 @@
     36061: 'FRAMEBUFFER_UNSUPPORTED',
   };
 
-  /**
-   * Create a framebuffer.
-   * @param {WebGLRenderingContext} gl 
-   * @param {Object} [options] 
-   * @param {WebGLTexture} [options.colorTexture] Single draw buffer.
-   * @param {Array.<WebGLTexture>} [options.colorAttachments] If you want to draw multiply buffers, use this property.
-   * @param {WebGLTexture} [options.depthTexture] Use depth texture
-   * @param {WebGLRenderbuffer} [options.depthRenderbuffer] or depth renderbuffer
-   * @returns {WebGLFramebuffer}
-   */
   function createFramebuffer(gl, options) {
     const { colorTexture, depthTexture, depthRenderbuffer } = options;
     const colorAttachments = defaultValue(options.colorAttachments, [ colorTexture ]);
@@ -937,6 +866,8 @@
    * @param {Number} [options.wrapT=CLAMP_TO_EDGE]
    * @param {Number} [options.minFilter=LINEAR]
    * @param {Number} [options.magFilter=LINEAR]
+   * @param {Number} [options.flipY=false] Only valid for DOM-Element uploads
+   * @param {Number} [options.premultiplyAlpha=false] Only valid for DOM-Element uploads
    * @returns {WebGLTexture}
    */
   function createTexture(gl, options) {
@@ -951,6 +882,11 @@
     if (!levels) {
       levels = [ data ];
     }
+
+    const flipY = defaultValue(options.flipY, false);
+    const premultiplyAlpha = defaultValue(options.premultiplyAlpha, false);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiplyAlpha);
 
     const texture = gl.createTexture();
 
@@ -1007,10 +943,10 @@
   }
 
   /**
-   * Update an texture, usually used for video texture.
+   * Update texture data.
    * @param {WebGLRenderingContext} gl 
    * @param {WebGLTexture} texture 
-   * @param {Object | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement} source When it is a object, it includes properties as below.
+   * @param {Object | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement} source 
    * @param {Number} source.width 
    * @param {Number} source.height 
    * @param {TypedArray} source.arrayBufferView 
@@ -1044,12 +980,6 @@
     return texture;
   }
 
-  /**
-   * 
-   * @param {*} gl 
-   * @param {*} options 
-   * @returns {WebGLTexture}
-   */
   function createCubeMap(gl, options) {
     options = defaultValue(options, defaultValue.EMPTY_OBJECT);
     const level = defaultValue(options.level, 0);
@@ -1130,19 +1060,19 @@
 
     if (Array.isArray(indices)) {
 
-      indicesType = gl.UNSIGNED_SHORT;
+      indicesType = WebGLConstant.UNSIGNED_SHORT;
 
     } else if (indices instanceof Uint8Array) {
 
-      indicesType = gl.UNSIGNED_BYTE;
+      indicesType = WebGLConstant.UNSIGNED_BYTE;
 
     } else if (indices instanceof Uint16Array) {
 
-      indicesType = gl.UNSIGNED_SHORT;
+      indicesType = WebGLConstant.UNSIGNED_SHORT;
 
     } else if (indices instanceof Uint32Array) {
 
-      indicesType = gl.UNSIGNED_INT;
+      indicesType = WebGLConstant.UNSIGNED_INT;
 
     } else {
       throw new Error('indices MUST be instance of Array, Uint8Array, Uint16Array or Uint32Array.');
@@ -1309,10 +1239,10 @@
    * Execute a clear command.
    * @param {WebGLRenderingContext} gl 
    * @param {Object} [options] 
-   * @param {Array} [options.color] 4 element of Array, [red, green, blue, alpha], value between 0 and 1.
-   * @param {Number} [options.depth] clear depth buffer to
-   * @param {Number} [options.stencil] clear stencil buffer to
-   * @param {WebGLFramebuffer | null} [options.fb] The framebuffer to clear.
+   * @param {Array} [options.color] 
+   * @param {Number} [options.depth] 
+   * @param {Number} [options.stencil] 
+   * @param {WebGLFramebuffer} [options.fb] 
    */
   function clear(gl, options) {
     options = defaultValue(options, defaultValue.EMPTY_OBJECT);
@@ -1618,12 +1548,11 @@
 
       const indicesType = getIndicesType(indices);
       gl.drawElements(primitiveType, count, indicesType, 0);
-    } else if (hasBoundElementArrayBuffer) {
+    } else if (extVAO && gl.getParameter(extVAO.VERTEX_ARRAY_BINDING_OES) && hasBoundElementArrayBuffer) {
       gl.drawElements(primitiveType, count, gl.UNSIGNED_SHORT, 0);
     } else {
       gl.drawArrays(primitiveType, 0, count);
     }
-
   }
 
   const ToyGL = {

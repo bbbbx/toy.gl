@@ -274,12 +274,11 @@ function draw(gl, options) {
 
     const indicesType = getIndicesType(indices);
     gl.drawElements(primitiveType, count, indicesType, 0);
-  } else if (hasBoundElementArrayBuffer) {
+  } else if (extVAO && gl.getParameter(extVAO.VERTEX_ARRAY_BINDING_OES) && hasBoundElementArrayBuffer) {
     gl.drawElements(primitiveType, count, gl.UNSIGNED_SHORT, 0);
   } else {
     gl.drawArrays(primitiveType, 0, count);
   }
-
-};
+}
 
 export default draw;
