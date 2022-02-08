@@ -1,4 +1,5 @@
 import defaultValue from './defaultValue.js';
+import WebglConstant from './WebglConstant.js';
 
 const cachedBuffer = {};
 
@@ -17,19 +18,19 @@ function getIndicesType(indices) {
 
   if (Array.isArray(indices)) {
 
-    indicesType = gl.UNSIGNED_SHORT;
+    indicesType = WebglConstant.UNSIGNED_SHORT;
 
   } else if (indices instanceof Uint8Array) {
 
-    indicesType = gl.UNSIGNED_BYTE;
+    indicesType = WebglConstant.UNSIGNED_BYTE;
 
   } else if (indices instanceof Uint16Array) {
 
-    indicesType = gl.UNSIGNED_SHORT;
+    indicesType = WebglConstant.UNSIGNED_SHORT;
 
   } else if (indices instanceof Uint32Array) {
 
-    indicesType = gl.UNSIGNED_INT;
+    indicesType = WebglConstant.UNSIGNED_INT;
 
   } else {
     throw new Error('indices MUST be instance of Array, Uint8Array, Uint16Array or Uint32Array.');
