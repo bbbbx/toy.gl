@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Texture</title>
+  <script src="../../dist/toygl.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const vs = `
+      attribute vec3 a_position;
+      attribute vec2 a_uv;
+      varying vec2 v_uv;
+      void main() {
+        gl_Position = vec4(a_position, 1);
+        v_uv = a_uv;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      uniform sampler2D u_texture1;
+      uniform sampler2D u_texture2;
+      uniform float u_seconds;
+      varying vec2 v_uv;
+      void main() {
+        vec2 uv = v_uv;
+        vec4 texel1 = texture2D(u_texture1, uv);
+        vec4 texel2 = texture2D(u_texture2, uv);
+        gl_FragColor = mix(texel1, texel2, abs(sin(u_seconds)));
+      }
+    `;
+
+    let texture2;
+    const image = new Image();
+    image.src = 'checkbox.png';
+    image.onload = () => {
+      texture2 = ToyGL.createTexture(gl, {
+        data: image,
+        internalFormat: gl.RGBA,
+        format: gl.RGBA,
+        type: gl.UNSIGNED_BYTE,
+        minFilter: gl.NEAREST,
+        magFilter: gl.NEAREST,
+      });
+    };
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      if (!texture2) {
+        return;
+      }
+
+      const seconds = ms * 0.001;
+
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+      });
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: [
+            -1, -1, 0,
+             1, -1, 0,
+             1,  1, 0,
+            -1,  1, 0,
+          ],
+          a_uv: [
+            0, 0,
+            1, 0,
+            1, 1,
+            0, 1,
+          ],
+        },
+        indices: [0, 1, 2, 0, 2, 3],
+        uniforms: {
+          u_texture1: 'cross.png',
+          u_texture2: texture2,
+          u_seconds: seconds,
+        },
+        count: 6,
+      });
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
