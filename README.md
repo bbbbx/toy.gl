@@ -32,8 +32,6 @@ Draw a triangle:
   function render(ms) {
     requestAnimationFrame(render);
 
-    const seconds = ms * 0.001;
-
     ToyGL.setState(gl, {
       viewport: [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight],
     });
@@ -65,7 +63,7 @@ Draw a triangle:
 </script>
 ```
 
-[Live demo](https://bbbbx.github.io/toy.gl/examples/triangle.html) of above example. See `examples` folder for more examples.
+[Live demo](https://bbbbx.github.io/toy.gl/examples/triangle) of above example. See [examples](https://bbbbx.github.io/toy.gl/examples) folder for more examples.
 
 ## Documentation
 
