@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Octahedral Projection</title>
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/gl-matrix-min.js"></script>
+  <script src="../ThirdParty/primitives.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const vs = `
+      attribute vec3 a_position;
+      varying vec3 v_position;
+      uniform mat4 u_modelMatrix;
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      void main() {
+        mat4 mvp = u_projectionMatrix * u_viewMatrix * u_modelMatrix;
+        gl_Position = mvp * vec4(a_position, 1);
+        v_position = (u_modelMatrix * vec4(a_position, 1)).xyz;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      uniform sampler2D u_texture;
+      uniform float u_textureSize;
+      varying vec3 v_position;
+
+      vec3 czm_sampleOctahedralProjectionWithFiltering(sampler2D projectedMap, vec2 textureSize, vec3 direction)
+      {
+        direction /= dot(vec3(1.0), abs(direction));
+        vec2 rev = abs(direction.zx) - vec2(1.0);
+        vec2 neg = vec2(direction.x < 0.0 ? rev.x : -rev.x,
+                        direction.z < 0.0 ? rev.y : -rev.y);
+        vec2 uv = direction.y < 0.0 ? neg : direction.xz;
+        vec2 coord = 0.5 * uv + vec2(0.5);
+        vec2 pixel = 1.0 / textureSize;
+
+        coord.x *= (textureSize.y / textureSize.x);
+
+        vec3 color = texture2D(projectedMap, coord).rgb;
+
+        return color;
+      }
+
+      void main() {
+        vec3 color = czm_sampleOctahedralProjectionWithFiltering(u_texture, vec2(u_textureSize), normalize(v_position));
+        gl_FragColor = vec4(color, 1);
+      }
+    `;
+
+    const eye = [0, 0, 5];
+    const target = [0, 0, 0];
+    const up = [0, 1, 0];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+    const projectionMatrix = glMatrix.mat4.create();
+    const fovy = 45 / 180 * Math.PI;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 100;
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    const cubeModelMatrix = glMatrix.mat4.create();
+    const sphereModelMatrix = glMatrix.mat4.create();
+
+    const sphere = primitives.createSphereVertices(1, 32, 16);
+    const cube = primitives.createCubeVertices(100);
+
+    const commonUniforms = {
+      u_viewMatrix: viewMatrix,
+      u_projectionMatrix: projectionMatrix,
+      u_texture: './kloppenheim_02_1k/skybox.png',
+      u_textureSize: 1024,
+    };
+
+    function update(ms) {
+      const seconds = ms * 0.001;
+
+      const theta = seconds * 0.5;
+      eye[0] = Math.cos(theta) * 5;
+      eye[2] = Math.sin(theta) * 5;
+      glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+    }
+
+    function draw(ms) {
+      ToyGL.setState(gl, {
+        cull: {
+          enable: false,
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0.5, 0.8, 1],
+        depth: 1,
+      });
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: { a_position: cube.position },
+        indices: cube.indices,
+        uniforms: {
+          ...commonUniforms,
+          u_modelMatrix: cubeModelMatrix,
+        },
+        count: cube.indices.length,
+      });
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: { a_position: sphere.position },
+        indices: sphere.indices,
+        uniforms: {
+          ...commonUniforms,
+          u_modelMatrix: sphereModelMatrix,
+        },
+        count: sphere.indices.length,
+      });
+    }
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      update(ms);
+      draw(ms);
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spherical Harmonics Irradiance Environment Map</title>
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/dat.gui.min.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const parameters = {
+      useSH: true,
+    };
+    const gui = new dat.GUI();
+    gui.add(parameters, 'useSH');
+
+    const vs = `
+      precision highp float;
+      attribute vec2 a_position;
+      attribute vec2 a_uv;
+      varying vec2 v_uv;
+      void main() {
+        gl_Position = vec4(a_position, 0, 1);
+        v_uv = a_uv;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      uniform vec3 u_sphericalHarmonicsCoefficients[9];
+      uniform sampler2D u_diffuseIrradiance;
+      uniform float u_useSH;
+      varying vec2 v_uv;
+      #define PI 3.141592653589793
+
+      // see https://graphics.stanford.edu/papers/envmap/envmap.pdf
+      vec3 sphericalHarmonics(vec3 normal, vec3 coefficients[9])
+      {
+        float c1 = 0.429043;
+        float c2 = 0.511664;
+        float c3 = 0.743125;
+        float c4 = 0.886227;
+        float c5 = 0.247708;
+        vec3 L00 = coefficients[0];
+        vec3 L1_1 = coefficients[1];
+        vec3 L10 = coefficients[2];
+        vec3 L11 = coefficients[3];
+        vec3 L2_2 = coefficients[4];
+        vec3 L2_1 = coefficients[5];
+        vec3 L20 = coefficients[6];
+        vec3 L21 = coefficients[7];
+        vec3 L22 = coefficients[8];
+        float x = normal.x;
+        float y = normal.y;
+        float z = normal.z;
+        return
+            c1 * L22 * (x * x - y * y)
+          + c3 * L20 * z * z
+          + c4 * L00
+          - c5 * L20
+          + 2.0 * c1 * (L2_2 * x * y + L21 * x * z + L2_1 * y * z)
+          + 2.0 * c2 * (L11 * x + L1_1 * y + L10 * z);
+      }
+      void main() {
+        float u = v_uv.x;
+        float v = v_uv.y;
+        float theta = u * 2.0 * PI;
+        float phi = v * PI;
+
+        float x = cos(theta) * sin(phi);
+        float y = sin(theta) * sin(phi);
+        float z = cos(phi);
+
+        vec3 direction = normalize(vec3(x, y, z));
+
+        vec3 diffuseIrradianceSH = sphericalHarmonics(direction, u_sphericalHarmonicsCoefficients);
+        vec3 diffuseIrradiance = texture2D(u_diffuseIrradiance, v_uv).rgb;
+        diffuseIrradiance = mix(diffuseIrradiance, diffuseIrradianceSH, u_useSH);
+
+        gl_FragColor = vec4(diffuseIrradiance, 1);
+      }
+    `;
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight],
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1]
+      });
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: [
+            -1, -1,
+             1, -1,
+             1,  1,
+            -1, 1,
+          ],
+          a_uv: [
+            0, 1,
+            1, 1,
+            1, 0,
+            0, 0,
+          ]
+        },
+        uniforms: {
+          // The environment map was processed useing cmgen tool.
+          // see https://github.com/google/filament/blob/main/tools/cmgen/README.md
+          u_sphericalHarmonicsCoefficients: [
+             0.280010014772415,  0.317132830619812,  0.338140189647675,
+             0.108635626733303,  0.131520792841911,  0.177006825804710,
+             0.224097296595573,  0.259037017822266,  0.275849699974060,
+            -0.046486910432577, -0.048035454005003, -0.112890340387821,
+            -0.062312539666891, -0.071131967008114, -0.085872657597065,
+             0.093183472752571,  0.102089628577232,  0.118615172803402,
+             0.030515955761075,  0.034412898123264,  0.038963515311480,
+            -0.141948476433754, -0.134657189249992, -0.185295507311821,
+             0.067304871976376,  0.074484124779701,  0.065457813441753,
+          ],
+          u_diffuseIrradiance: './irradiance.png',
+          u_useSH: parameters.useSH + 0,
+        },
+        indices: [0, 1, 2, 0, 2, 3],
+        count: 6,
+      });
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

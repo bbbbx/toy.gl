@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vertex Picking</title>
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/gl-matrix-min.js"></script>
+  <script src="../ThirdParty/primitives.js"></script>
+  <script src="../ThirdParty/webgl_utils.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <div id="ui" style="position: fixed; top: 0; left: 0; padding: 10px; color: white;"></div>
+  <script>
+    const ui = document.getElementById('ui');
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const modelMatrix = glMatrix.mat4.create();
+
+    let radius = 20, theta = 90, phi = 0;
+    const eye = [0, 5, 20];
+    const target = [0, 0.01, 0];
+    const up = [0, 1, 0];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+    const projectionMatrix = glMatrix.mat4.create();
+    const fovy = 45 / 180 * Math.PI;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 100;
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    const pickColorTexture = ToyGL.createTexture(gl, {
+      width: gl.canvas.width,
+      height: gl.canvas.height,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      type: gl.UNSIGNED_BYTE,
+      data: null,
+    });
+    const pickDepthTexture = ToyGL.createTexture(gl, {
+      width: gl.canvas.width,
+      height: gl.canvas.height,
+      format: gl.DEPTH_COMPONENT,
+      internalFormat: gl.DEPTH_COMPONENT,
+      type: gl.UNSIGNED_INT,
+      minFilter: gl.NEAREST,
+      magFilter: gl.NEAREST,
+    });
+    const pickFramebuffer = ToyGL.createFramebuffer(gl, {
+      colorTexture: pickColorTexture,
+      depthTexture: pickDepthTexture,
+    });
+
+    const copyColorTexture = ToyGL.createTexture(gl, {
+      width: gl.canvas.width,
+      height: gl.canvas.height,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      type: gl.UNSIGNED_BYTE,
+      data: null,
+      minFilter: gl.NEAREST,
+      magFilter: gl.NEAREST,
+    });
+    const copyFramebuffer = ToyGL.createFramebuffer(gl, {
+      colorTexture: copyColorTexture,
+    });
+
+    let worldPos = undefined;
+
+    const sphere = primitives.createSphereVertices(1.5, 4, 2);
+    const cube = {
+      indices: [0, 1, 3, 0, 3, 2, 2, 3, 7, 2, 7, 6, 6, 7, 5, 6, 5, 4, 4, 5, 1, 4, 1, 0, 2, 6, 4, 2, 4, 0, 7, 3, 1, 7, 1, 5],
+      position: [
+        -1, -1,  1,
+        -1,  1,  1,
+        -1, -1, -1,
+        -1,  1, -1,
+          1, -1,  1,
+          1,  1,  1,
+          1, -1, -1,
+          1,  1, -1,
+      ],
+    };
+
+    const objects = [];
+    const n = 40;
+    for (let i = 0; i < n; i++) {
+      const x = i - n/2;
+      const y = i - n/2;
+      const z = 10 + -2 * i;
+      const modelMatrix = glMatrix.mat4.create();
+      const translation = [x, y, z];
+      glMatrix.mat4.fromTranslation(modelMatrix, translation);
+      const probability = Math.random() > 0.5;
+      const indices = probability ?
+        sphere.indices :
+        cube.indices;
+      const pos = probability ?
+        sphere.position :
+        cube.position;
+      objects.push({
+        attributes: {
+          a_pos: pos,
+        },
+        indices: indices,
+        uniforms: {
+          u_color: [Math.random() * 0.5, Math.random() * 0.5, Math.random() * 0.5, 1],
+          u_modelMatrix: modelMatrix,
+        },
+      });
+    }
+
+    const mouseRectangle = {
+      x: 0,
+      y: 0,
+      width: 50,
+      height: 50,
+    };
+
+    function renderMouseWireframe(x, y, width, height) {
+      x = x - width / 2;
+      y = y - height / 2;
+      const bl = [(x) / gl.canvas.width * 2.0 - 1.0, (y) / gl.canvas.height * 2.0 - 1.0, ]
+      const br = [(x+width) / gl.canvas.width * 2.0 - 1.0, (y) / gl.canvas.height * 2.0 - 1.0, ]
+      const tl = [(x) / gl.canvas.width * 2.0 - 1.0, (y+height) / gl.canvas.height * 2.0 - 1.0, ]
+      const tr = [(x+width) / gl.canvas.width * 2.0 - 1.0, (y+height) / gl.canvas.height * 2.0 - 1.0, ]
+
+      ToyGL.setState(gl, {
+        depthTest: {
+          enable: false
+        },
+      });
+
+      ToyGL.draw(gl, {
+        vs: `
+          attribute vec2 a_pos;
+          void main() {
+            gl_Position = vec4(a_pos, 0, 1);
+          }
+        `,
+        fs: `
+          precision highp float;
+          void main() {
+            gl_FragColor = vec4(1);
+          }
+        `,
+        attributes: {
+          a_pos: [
+            ...bl,
+            ...br,
+            ...tr,
+            ...tl,
+          ],
+        },
+        indices: [0, 1, 1, 2, 2, 3, 3, 0],
+        primitiveType: gl.LINES,
+        count: 8,
+        fb: undefined,
+      });
+    }
+
+    function renderObject(object, framebuffer, primitiveType, pointSize, color) {
+      const uniforms = {
+        u_projectionMatrix: projectionMatrix,
+        u_viewMatrix: viewMatrix,
+        ...object.uniforms,
+        u_pointSize: pointSize,
+      };
+      if (color) {
+        uniforms.u_color = color;
+      }
+
+      ToyGL.draw(gl, {
+        vs: `
+          precision highp float;
+          attribute vec3 a_pos;
+          uniform mat4 u_modelMatrix;
+          uniform mat4 u_viewMatrix;
+          uniform mat4 u_projectionMatrix;
+          uniform float u_pointSize;
+          // varying float v_depth;
+          void main() {
+            mat4 mvp = u_projectionMatrix * u_viewMatrix * u_modelMatrix;
+            gl_Position = mvp * vec4(a_pos, 1);
+            gl_PointSize = u_pointSize;
+            // v_depth = gl_Position.z / gl_Position.w;
+          }
+        `,
+        fs: `
+          precision highp float;
+          uniform vec4 u_color;
+          // varying float v_depth;
+          void main() {
+            gl_FragColor = u_color;
+
+            // float zNear = 0.1;
+            // float zFar = 100.0;
+            // float depth = v_depth;
+            // depth = (2.0 * zNear) / (zFar + zNear - depth * (zFar - zNear));
+            // gl_FragColor = vec4(vec3(depth), 1);
+          }
+        `,
+        attributes: object.attributes,
+        uniforms: uniforms,
+        indices: object.indices,
+        primitiveType: primitiveType,
+        count: object.indices.length,
+        fb: framebuffer,
+      });
+    }
+
+    function renderWorldPos(worldPos, framebuffer, pointSize, color) {
+      ToyGL.setState(gl, {
+        depthTest: {
+          enable: false,
+        },
+      });
+      ToyGL.draw(gl, {
+        vs: `
+          attribute vec3 a_pos;
+          uniform mat4 u_viewMatrix;
+          uniform mat4 u_projectionMatrix;
+          uniform float u_pointSize;
+          void main() {
+            mat4 vp = u_projectionMatrix * u_viewMatrix;
+            gl_Position = vp * vec4(a_pos, 1);
+            gl_PointSize = u_pointSize;
+          }
+        `,
+        fs: `
+          precision highp float;
+          uniform vec4 u_color;
+          void main() {
+            // if (distance(gl_PointCoord, vec2(0.5)) > 0.5) discard;
+            gl_FragColor = u_color;
+          }
+        `,
+        attributes: {
+          a_pos: [ worldPos[0], worldPos[1], worldPos[2] ],
+        },
+        uniforms: {
+          u_color: color || [0, 0.5, 0, 1],
+          u_pointSize: pointSize || 10,
+          u_projectionMatrix: projectionMatrix,
+          u_viewMatrix: viewMatrix,
+        },
+        primitiveType: gl.POINTS,
+        count: 1,
+        fb: framebuffer,
+      });
+    }
+
+    function ndcToWorldPos(ndc, viewMatrix, projectionMatrix) {
+      ndc = glMatrix.vec4.fromValues(
+        ndc[0],
+        ndc[1],
+        ndc[2],
+        1,
+      );
+
+      const cameraMatrix = glMatrix.mat4.create();
+      const inverseProjection = glMatrix.mat4.create();
+      glMatrix.mat4.invert(cameraMatrix, viewMatrix);
+      glMatrix.mat4.invert(inverseProjection, projectionMatrix);
+
+      let worldPos = glMatrix.vec4.create();
+
+      glMatrix.vec4.transformMat4(worldPos, ndc, inverseProjection);
+      worldPos = glMatrix.vec4.fromValues(
+        worldPos[0] / worldPos[3],
+        worldPos[1] / worldPos[3],
+        worldPos[2] / worldPos[3],
+        1.0
+      );
+
+      glMatrix.vec4.transformMat4(worldPos, worldPos, cameraMatrix);
+
+      return glMatrix.vec3.fromValues(
+        worldPos[0],
+        worldPos[1],
+        worldPos[2],
+      );
+    }
+
+    function loop(ms) {
+      requestAnimationFrame(loop);
+
+      update(ms);
+      render(ms);
+    }
+
+    requestAnimationFrame(loop);
+
+    function update(ms) {
+      eye[1] = Math.sin(phi / 180 * Math.PI) * radius;
+      const xyRadius = Math.cos(phi / 180 * Math.PI) * radius;
+      eye[0] = xyRadius * Math.cos(theta / 180 * Math.PI);
+      eye[2] = xyRadius * Math.sin(theta / 180 * Math.PI);
+      glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+    }
+
+    function render(ms) {
+      ToyGL.setState(gl, {
+        cull: {
+          enable: true,
+        },
+        depthTest: {
+          enable: true,
+        },
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: undefined,
+      });
+
+      for (let i = 0; i < objects.length; i++) {
+        const object = objects[i];
+        renderObject(object, undefined, gl.TRIANGLES, 1.0);
+        renderObject(object, undefined, gl.LINE_STRIP, 1.0, [1, 1, 1, 1]);
+        renderObject(object, undefined, gl.POINTS, 4.0, [1, 1, 1, 1]);
+      }
+
+      renderMouseWireframe(mouseRectangle.x, mouseRectangle.y, mouseRectangle.width, mouseRectangle.height);
+
+      if (worldPos) {
+        renderWorldPos(worldPos, undefined, 10, [0, 0.6, 0, 1]);
+      }
+    }
+
+    function renderDepthTextureToFramebuffer(framebuffer, texture, viewport) {
+      ToyGL.setState(gl, {
+        cull: {
+          enable: false,
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: viewport,
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: framebuffer,
+      });
+
+      ToyGL.draw(gl, {
+        vs: `
+          attribute vec2 a_pos;
+          attribute vec2 a_uv;
+          varying vec2 v_uv;
+          void main() {
+            gl_Position = vec4(a_pos, 0, 1);
+            v_uv = a_uv;
+          }
+        `,
+        fs: `
+          precision highp float;
+          varying vec2 v_uv;
+          uniform sampler2D u_tex;
+
+          // [0, 1) => RGBA
+          // FIXME: 1.0 => (0, 0, 0, 0)
+          // FIXME: 0.0 => (0, 0, 0, 0)
+          vec4 czm_packDepth(float depth)
+          {
+            vec4 enc = vec4(1.0, 255.0, 65025.0, 16581375.0) * depth;
+            enc = fract(enc);
+            enc -= enc.yzww * vec4(1.0 / 255.0, 1.0 / 255.0, 1.0 / 255.0, 0.0);
+            return enc;
+          }
+
+          float LinearizeDepth(float depth)
+          {
+            float zNear = 0.1;    // TODO: Replace by the zNear of your perspective projection
+            float zFar  = 30.0; // TODO: Replace by the zFar  of your perspective projection
+            return (2.0 * zNear) / (zFar + zNear - depth * (zFar - zNear));
+          }
+
+          void main() {
+            float depth = texture2D(u_tex, v_uv).r;
+            gl_FragColor = czm_packDepth(depth);
+            // gl_FragColor = vec4(vec3(depth), 1);
+            // gl_FragColor = texture2D(u_tex, v_uv);
+
+            // FIXME: uncomment below lines for depth visualization!!!
+            // float c = LinearizeDepth(depth);
+            // gl_FragColor = vec4(c, c, c, 1.0);
+          }
+        `,
+        attributes: {
+          a_pos: [
+            -1, -1,
+             1, -1,
+             1,  1,
+            -1,  1,
+          ],
+          a_uv: [
+            0, 0,
+            1, 0,
+            1, 1,
+            0, 1,
+          ],
+        },
+        indices: [0, 1, 2, 0, 2, 3],
+        uniforms: {
+          u_tex: texture,
+        },
+        count: 6,
+        fb: framebuffer,
+      });
+    }
+
+    function czm_packDepth(depth) {
+      var enc = [1.0, 255.0, 65025.0, 16581375.0].map(v => v * depth);
+      enc = enc.map(v => v - Math.floor(v));
+      var yzww = [ enc[1], enc[2], enc[3], enc[3] ];
+      var a = [ 1.0 / 255.0, 1.0 / 255.0, 1.0 / 255.0, 0.0 ];
+      // enc[0] -= enc[1] * 1.0 / 255.0; enc[1] -= enc
+      // enc -= enc.yzww * vec4(1.0 / 255.0, 1.0 / 255.0, 1.0 / 255.0, 0.0);
+      enc = enc.map((v, i) => v - yzww[i] * a[i]);
+      return enc;
+    }
+
+    function dot(a, b) {
+      if (a.length !== b.length) {
+        throw new Error('dot: a\'s length MUST equals b\'s length.')
+      }
+      return a.reduce((sum, v, i) => sum + v * b[i], 0);
+    }
+
+    function distance(a, b) {
+      const length = a.length;
+      if (length !== b.length) {
+        throw new Error('distance: length of a MUST equals length of b.');
+      }
+      let sum = 0;
+      for (let i = 0; i < length; i++) {
+        sum += Math.pow(a[i] - b[i], 2);
+      }
+      return Math.sqrt(sum);
+    }
+
+    const packedDepthScale = [
+      1.0,
+      1.0 / 255.0,
+      1.0 / 65025.0,
+      1.0 / 16581375.0
+    ];
+
+    function pick(event) {
+      const width = mouseRectangle.width;
+      const height = mouseRectangle.height;
+      const x = (event.layerX) - (width / 2);
+      const y = (gl.canvas.height - 1 - event.layerY) - (height / 2);
+
+      ToyGL.setState(gl, {
+        cull: {
+          enable: true,
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+        // TODO: 设置 scissor test 为拾取的 rectangle
+      });
+
+      // 1. render POINTS depth
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: pickFramebuffer,
+      });
+      // TODO: 调整视椎体，使其匹配拾取的 rectangle
+      // TODO: 调整 framebuffer attachments 的宽高为 viewport（resize 时才改变） 宽高
+      for (let i = 0; i < objects.length; i++) {
+        const object = objects[i];
+        renderObject(object, pickFramebuffer, gl.POINTS, 1.0);
+      }
+
+      renderDepthTextureToFramebuffer(copyFramebuffer, pickDepthTexture, [0, 0, gl.canvas.width, gl.canvas.height]);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, copyFramebuffer);
+      const pointPixels = new Uint8Array(width * height * 4);
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pointPixels);
+
+
+      // 2. render TRIANGLES depth
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: pickFramebuffer,
+      });
+      for (let i = 0; i < objects.length; i++) {
+        const object = objects[i];
+        renderObject(object, pickFramebuffer, gl.TRIANGLES);
+      }
+
+      renderDepthTextureToFramebuffer(copyFramebuffer, pickDepthTexture, [0, 0, gl.canvas.width, gl.canvas.height]);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, copyFramebuffer);
+      const trianglePixels = new Uint8Array(width * height * 4);
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, trianglePixels);
+
+
+      // compare depths
+      let pickedNDCs = [];
+      for (let dy = 0; dy < height; dy++) {
+        for (let dx = 0; dx < width; dx++) {
+          const startIndex = (dy * width + dx) * 4;
+
+          const pointPixel = pointPixels.slice(startIndex, startIndex + 4);
+          const packedPointDepth = Array.from(pointPixel).map(v => v / 255);
+          const pointDepth = dot(packedPointDepth, packedDepthScale);
+
+          const trianglePixel = trianglePixels.slice(startIndex, startIndex + 4);
+          const packedTriangleDepth = Array.from(trianglePixel).map(v => v / 255);
+          const triangleDepth = dot(packedTriangleDepth, packedDepthScale);
+
+          const ndc = [
+            (x + dx) / gl.canvas.width * 2.0 - 1.0,
+            (y + dy) / gl.canvas.height * 2.0 - 1.0,
+            pointDepth * 2.0 - 1.0,
+          ];
+          const pointWorldPos = ndcToWorldPos(ndc, viewMatrix, projectionMatrix);
+
+          ndc[2] = triangleDepth * 2 - 1;
+          const triangleWorldPos = ndcToWorldPos(ndc, viewMatrix, projectionMatrix);
+
+          if (pointDepth < 1 && pointDepth > 0) {
+            const magicDistance = 0.3;
+            if (triangleDepth !== 0 && triangleDepth < pointDepth && distance(pointWorldPos, triangleWorldPos) > magicDistance) {
+              continue;
+            }
+
+            const pickedNDC = {
+              x: (x + dx) / gl.canvas.width * 2.0 - 1.0,
+              y: (y + dy) / gl.canvas.height * 2.0 - 1.0,
+              z: pointDepth * 2.0 - 1.0,
+              dr: Math.sqrt(Math.pow(dx - width/2, 2) + Math.pow(dy - height/2, 2)),
+              depth: pointDepth,
+            };
+            pickedNDCs.push(pickedNDC);
+          }
+        }
+      }
+
+      pickedNDCs.sort((a, b) => a.depth - b.depth);
+
+      worldPos = undefined;
+
+      if (pickedNDCs.length > 0) {
+        const pickedNDC = pickedNDCs[0]; // pick the closest one
+        const ndc = [
+          pickedNDC.x,
+          pickedNDC.y,
+          pickedNDC.z,
+        ];
+
+        worldPos = ndcToWorldPos(ndc, viewMatrix, projectionMatrix);
+        ui.innerText = `(${worldPos[0].toFixed(3)}, ${worldPos[1].toFixed(3)}, ${worldPos[2].toFixed(3)})`;
+      } else {
+        ui.innerText = '';
+      }
+    }
+
+    function mousemove(event) {
+      mouseRectangle.x = event.layerX;
+      mouseRectangle.y = (window.innerHeight - 1 - event.layerY);
+    }
+
+    gl.canvas.addEventListener('mousemove', pick);
+    gl.canvas.addEventListener('mousemove', mousemove);
+    document.body.addEventListener('contextmenu', e => {
+      e.preventDefault();
+    });
+
+    const canvasHandler = new WebGLUtils.CanvasHandler(gl.canvas);
+    canvasHandler.onwheel = function(direction) {
+      radius += direction * radius / 30;
+      radius = Math.max(2, radius);
+      radius = Math.min(100, radius);
+    };
+    canvasHandler.ondrag = function(deltaMovement) {
+      theta += deltaMovement.x / 8;
+      theta %= 360;
+      phi += deltaMovement.y / 8;
+      phi = Math.max(Math.min(89, phi), -89);
+    };
+  </script>
+</body>
+</html>

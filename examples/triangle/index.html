@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triangle</title>
+  <script src="../../dist/toygl.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext({
+      // requireWebgl2: true,
+    });
+    document.body.appendChild(gl.canvas);
+
+    const vs = `
+      attribute vec2 a_position;
+      attribute vec3 a_color;
+      varying vec3 v_color;
+      void main() {
+        gl_Position = vec4(a_position, 0, 1);
+        v_color = a_color;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      varying vec3 v_color;
+      void main() {
+        gl_FragColor = vec4(v_color, 1);
+      }
+    `;
+
+    const vao = ToyGL.createVAO(gl, {
+      attributes: {
+        a_position: {
+          location: 0,
+          size: 2,
+          data: [
+           -0.6, -0.4,
+            0.6, -0.4,
+             0,  0.6,
+          ]
+        },
+        a_color: {
+          location: 1,
+          size: 3,
+          data: [
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1,
+          ]
+        }
+      },
+      indices: [0, 1, 2]
+    });
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      const seconds = ms * 0.001;
+
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight],
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1]
+      });
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributeLocations: {
+          a_position: 0,
+          a_color: 1,
+        },
+        vao: vao,
+        count: 3,
+      });
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

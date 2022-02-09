@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vertex Array Object</title>
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/gl-matrix-min.js"></script>
+  <script src="../ThirdParty/primitives.js"></script>
+  <script src="../ThirdParty/dat.gui.min.js"></script>
+  <script src="../ThirdParty/stats.min.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const vs = `
+      attribute vec3 a_position;
+
+      uniform mat4 u_modelMatrix;
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+
+      varying vec3 v_position;
+
+      void main() {
+        mat4 mvp = u_projectionMatrix * u_viewMatrix * u_modelMatrix;
+        gl_Position = mvp * vec4(a_position, 1);
+        v_position = a_position;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      varying vec3 v_position;
+      void main() {
+        gl_FragColor = vec4(normalize(v_position) * 0.5 + 0.5, 1);
+      }
+    `;
+
+    const cube = primitives.createCubeVertices(0.5);
+
+    const modelMatrix = glMatrix.mat4.create();
+
+    const eye = [0, 0, 15];
+    const target = [0, 0, 0];
+    const up = [0, 1, 0];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+    const projectionMatrix = glMatrix.mat4.create();
+    const fovy = 45 / 180 * Math.PI;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 200;
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    const parameters = {
+      useVAO: true,
+      row: 40,
+      col: 40,
+    };
+
+    const gui = new dat.GUI();
+    gui.add(parameters, 'useVAO').name('Use VAO');
+    gui.add(parameters, 'row', 1, 100, 1).name('row');
+    gui.add(parameters, 'col', 1, 100, 1).name('col');
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    document.body.appendChild(stats.dom);
+
+    const vao = ToyGL.createVAO(gl, {
+      attributes: {
+        a_position: {
+          location: 0,
+          size: 3,
+          data: cube.position,
+        },
+      },
+      indices: cube.indices,
+    });
+
+    function drawCube(modelMatrix) {
+      let options;
+      if (parameters.useVAO) {
+        options = {
+          attributeLocations: {
+            a_position: 0,
+          },
+          vao: vao,
+        };
+      } else {
+        options = {
+          attributes: {
+            a_position: cube.position
+          },
+          indices: cube.indices,
+        };
+      }
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        ...options,
+        count: cube.indices.length,
+        uniforms: {
+          u_modelMatrix: modelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+        },
+      });
+    }
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      stats.begin();
+
+      const seconds = ms * 0.001;
+
+      const radius = Math.sqrt(parameters.row*parameters.row + parameters.col*parameters.col) + 10;
+      eye[0] = Math.cos(seconds) * radius;
+      eye[2] = Math.sin(seconds) * radius;
+      glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight],
+        depthTest: {
+          enable: true,
+          write: true,
+        }
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+      });
+
+      const halfOfRow = Math.floor(parameters.row / 2);
+      const halfOfCol = Math.floor(parameters.col / 2);
+      for (let row = 0; row < parameters.row; row++) {
+        for (let col = 0; col < parameters.col; col++) {
+          glMatrix.mat4.fromTranslation(modelMatrix, [col - halfOfCol, row - halfOfRow, 0]);
+          glMatrix.mat4.rotateX(modelMatrix, modelMatrix, Math.sin(row + seconds * 0.5));
+          glMatrix.mat4.rotateZ(modelMatrix, modelMatrix, Math.cos(col + seconds));
+          drawCube(modelMatrix);
+        }
+      }
+
+      stats.end();
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

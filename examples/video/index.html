@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video</title>
+  <script src="../../dist/toygl.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    let copyVideo = false;
+    function setupVideo(url) {
+      const video = document.createElement('video');
+
+      var playing = false;
+      var timeupdate = false;
+
+      // video.autoplay = true;
+      video.muted = true;
+      video.loop = true;
+
+      // Waiting for these 2 events ensures
+      // there is data in the video
+
+      video.addEventListener('playing', function() {
+        playing = true;
+        checkReady();
+      }, true);
+
+      video.addEventListener('timeupdate', function() {
+        timeupdate = true;
+        checkReady();
+      }, true);
+
+      video.src = url;
+      video.play();
+
+      function checkReady() {
+        if (playing && timeupdate) {
+          copyVideo = true;
+        }
+      }
+
+      return video;
+    }
+
+    const vs = `
+      attribute vec2 a_position;
+      attribute vec2 a_uv;
+      varying vec2 v_uv;
+      void main() {
+        gl_Position = vec4(a_position, 0, 1);
+        v_uv = a_uv;
+      }
+    `;
+    const fs = `
+      precision highp float;
+      uniform sampler2D u_texture;
+      varying vec2 v_uv;
+      void main() {
+        vec4 texel = texture2D(u_texture, vec2(v_uv.x, 1.0 - v_uv.y));
+        gl_FragColor = texel;
+      }
+    `;
+
+    let texture;
+    const videoElem = setupVideo('./Firefox.mp4');
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      const seconds = ms * 0.001;
+
+      // return;
+
+
+      if (!copyVideo) {
+        return;
+      }
+
+      if (!texture) {
+        texture = ToyGL.createTexture(gl, {
+          level: 0,
+          format: gl.RGBA,
+          internalFormat: gl.RGBA,
+          type: gl.UNSIGNED_BYTE,
+          data: videoElem,
+        });
+      }
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoElem);
+
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight],
+      });
+
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1]
+      });
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: [
+            -0.8, -0.8,
+             0.8, -0.8,
+             0.8,  0.8,
+             -0.8, 0.8,
+          ],
+          a_uv: [
+            0, 0,
+            1, 0,
+            1, 1,
+            0, 1,
+          ]
+        },
+        uniforms: {
+          u_texture: texture,
+        },
+        indices: [0, 1, 2, 0, 2, 3],
+        count: 6,
+      });
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
