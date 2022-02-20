@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/dat.gui.min.js"></script>
+  <title>Screen-Door Transparency</title>
+  <style>
+    html, body { margin: 0; }
+  </style>
+</head>
+<body>
+  <script>
+    const { createContext, draw, clear, setState } = ToyGL;
+
+    const gl = createContext({
+      requireWebgl2: true
+    });
+    document.body.appendChild(gl.canvas);
+
+    const params = {
+      alpha: 0.5,
+      screenScale: 1,
+    };
+    const gui = new dat.GUI();
+    gui.add(params, 'alpha', 0, 1, 0.001);
+    gui.add(params, 'screenScale', 0, 1, 0.001);
+
+    function renderLoop(ms) {
+      const viewport = [0, 0, gl.canvas.width, gl.canvas.height];
+
+      setState(gl, {
+        viewport: viewport,
+      });
+
+      clear(gl, {
+        color: [0, 0, 0, 1],
+      });
+
+      draw(gl, {
+        vs: `#version 300 es
+          precision highp float;
+          in vec3 a_position;
+          void main() {
+            gl_Position = vec4(a_position, 1);
+          }
+        `,
+        fs: `#version 300 es
+          precision highp float;
+          out vec4 FragColor;
+          void main() {
+            FragColor = vec4(0, 0.5, 0, 1);
+          }
+        `,
+        attributes: {
+          a_position: [
+            -0.6,  0.6, 0,
+             0.6,  0.6, 0,
+             0.0, -0.6, 0,
+          ],
+        },
+        count: 3,
+      });
+
+      draw(gl, {
+        vs: `#version 300 es
+          precision highp float;
+          in vec3 a_position;
+
+          out vec2 v_screenPos;
+
+          uniform vec4 u_viewport;
+
+          void main() {
+            gl_Position = vec4(a_position, 1);
+            v_screenPos = u_viewport.xy + ((gl_Position.xy / gl_Position.w) * 0.5 + vec2(0.5)) * u_viewport.zw;
+          }
+        `,
+        fs: `#version 300 es
+          precision highp float;
+
+          in vec2 v_screenPos;
+
+          out vec4 FragColor;
+
+          uniform float u_alpha;
+          uniform vec4 u_viewport;
+          uniform float u_screenScale;
+
+          void main() {
+
+            vec2 screenPos = v_screenPos;
+            screenPos *= u_screenScale;
+
+            // https://digitalrune.github.io/DigitalRune-Documentation/html/fa431d48-b457-4c70-a590-d44b0840ab1e.htm
+            mat4 thresholdMatrix = mat4(
+               1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
+              13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
+               4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
+              16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
+            );
+            float threshold = thresholdMatrix[ int(mod(screenPos.x, 4.0)) ][ int(mod(screenPos.y, 4.0)) ];
+            if (threshold > u_alpha) {
+              discard;
+            }
+
+            FragColor = vec4(11);
+          }
+        `,
+        attributes: {
+          a_position: [
+            -0.6, -0.6, 0,
+             0.6, -0.6, 0,
+             0.0,  0.6, 0,
+          ],
+        },
+        uniforms: {
+          u_viewport: viewport,
+          u_alpha: params.alpha,
+          u_screenScale: params.screenScale,
+        },
+        count: 3,
+      });
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    requestAnimationFrame(renderLoop);
+  </script>
+</body>
+</html>

@@ -79,6 +79,10 @@
       },
       {
         "label": "Custom Mipmap for Alpha Cutoff "
+      },
+      {
+        "label": "Screen-Door Transparency",
+        "id": "screen-door-transparency"
       }
     ]
   }
