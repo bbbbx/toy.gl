@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow Map</title>
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/gl-matrix-min.js"></script>
+  <script src="../ThirdParty/dat.gui.min.js"></script>
+  <script src="../ThirdParty/primitives.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const vs = `
+      precision highp float;
+      attribute vec3 a_position;
+      attribute vec2 a_uv;
+      varying vec2 v_uv;
+      varying vec4 v_projectedUv;
+      uniform mat4 u_modelMatrix;
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      uniform mat4 u_textureMatrix;
+
+      void main() {
+        vec4 worldPosition = u_modelMatrix * vec4(a_position, 1);
+        gl_Position = u_projectionMatrix * u_viewMatrix * worldPosition;
+
+        v_projectedUv = u_textureMatrix * worldPosition;
+        v_uv = a_uv;
+
+        // uncomment to see light POV
+        // gl_Position = mat4(
+        //    2.0,  0.0,  0.0, 0.0,
+        //    0.0,  2.0,  0.0, 0.0,
+        //    0.0,  0.0,  2.0, 0.0,
+        //   -1.0, -1.0, -1.0, 1.0
+        // ) * v_projectedUv;
+      }
+    `;
+    const fs = `
+      precision highp float;
+
+      uniform sampler2D u_depthTexture;
+      uniform sampler2D u_texture;
+      varying vec2 v_uv;
+      varying vec4 v_projectedUv;
+
+      void main() {
+        vec3 projectedUv = v_projectedUv.xyz / v_projectedUv.w;
+        float depthFromLightView = projectedUv.z;
+
+        bool inRange = projectedUv.x >= 0.0 &&
+                       projectedUv.x <= 1.0 &&
+                       projectedUv.y >= 0.0 &&
+                       projectedUv.y <= 1.0 &&
+                       projectedUv.z >= 0.0 &&
+                       projectedUv.z <= 1.0;
+
+        vec4 projectedTexel = texture2D(u_depthTexture, projectedUv.xy);
+        float depthFromDepthTexture = projectedTexel.r;
+        float visibility = (inRange && depthFromLightView <= depthFromDepthTexture) ? 1.0 : 0.3;
+
+        vec4 color = texture2D(u_texture, v_uv);
+        color.rgb *= visibility;
+
+        gl_FragColor = color;
+      }
+    `;
+
+    const depthVs = `
+      precision highp float;
+      attribute vec3 a_position;
+      varying vec4 v_position;
+      uniform mat4 u_modelMatrix;
+      uniform mat4 u_viewMatrix;
+      uniform mat4 u_projectionMatrix;
+      void main() {
+        gl_Position = v_position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * vec4(a_position, 1);
+      }
+    `;
+    const depthFs = `
+      precision highp float;
+      varying vec4 v_position;
+      void main() {
+        gl_FragColor = vec4(0.0);
+      }
+    `;
+
+    const sphere = primitives.createSphereVertices(1, 32, 16);
+    const cube = primitives.createCubeVertices(1);
+    const frustum = {
+      position: [
+        -1, -1, -1,
+        1, -1, -1,
+        -1,  1, -1,
+        1,  1, -1,
+        -1, -1,  1,
+        1, -1,  1,
+        -1,  1,  1,
+        1,  1,  1,
+      ],
+      indices: [
+        0, 1, 1, 3, 3, 2, 2, 0,
+        4, 5, 5, 7, 7, 6, 6, 4,
+        0, 4, 1, 5, 3, 7, 2, 6,
+      ]
+    };
+
+    const eye = [0, -3, 0];
+    const target = [0, 0, 0];
+    const up = [0, 0, 1];
+    const viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(viewMatrix, eye, target, up);
+
+    const projectionMatrix = glMatrix.mat4.create();
+    const fovy = Math.PI / 180 * 45;
+    const aspect = window.innerWidth / window.innerHeight;
+    const near = 0.1;
+    const far = 100;
+    glMatrix.mat4.perspective(projectionMatrix, fovy, aspect, near, far);
+
+    const checkerboardTexture = ToyGL.createTexture(gl, {
+      level: 0,
+      width: 8,
+      height: 8,
+      internalFormat: gl.LUMINANCE,
+      format: gl.LUMINANCE,
+      type: gl.UNSIGNED_BYTE,
+      data: new Uint8Array([
+        0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+        0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF,
+        0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+        0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF,
+        0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+        0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF,
+        0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+        0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC, 0xFF,
+      ]),
+      minFilter: gl.NEAREST,
+      magFilter: gl.NEAREST,
+    });
+
+    const textureSize = 2048;
+    const colorTexture = ToyGL.createTexture(gl, {
+      level: 0,
+      width: textureSize,
+      height: textureSize,
+      internalFormat: gl.RGBA,
+      type: gl.UNSIGNED_BYTE,
+      format: gl.RGBA,
+      data: null,
+    });
+
+    const depthTexture = ToyGL.createTexture(gl, {
+      level: 0,
+      width: textureSize,
+      height: textureSize,
+      internalFormat: gl.DEPTH_COMPONENT,
+      type: gl.UNSIGNED_INT,
+      format: gl.DEPTH_COMPONENT,
+      data: null,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+    });
+
+    const framebuffer = ToyGL.createFramebuffer(gl, {
+      colorTexture: colorTexture,
+      depthTexture: depthTexture,
+    });
+
+    const lightPosition = [0, 0, 0];
+    const lightModelMatrix = glMatrix.mat4.create();
+    const parameter = {
+      fovy: Math.PI / 180 * 90,
+      near: 1,
+      far: 10,
+      eyeZ: 4,
+      showDepthTexture: true,
+    };
+    const gui = new dat.GUI();
+    gui.add(parameter, 'eyeZ', -10, 10, 0.1);
+    gui.add(parameter, 'showDepthTexture');
+
+    const textureMatrix = glMatrix.mat4.create();
+    const lightViewMatrix = glMatrix.mat4.create();
+    const lightProjectionMatrix = glMatrix.mat4.create();
+
+    const cubeModelMatrix = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), [1, 2, -0.5]);
+    const sphereModelMatrix = glMatrix.mat4.create();
+    const groundModelMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.scale(groundModelMatrix, groundModelMatrix, [10, 10, 1]);
+    glMatrix.mat4.translate(groundModelMatrix, groundModelMatrix, [0, 0, -1]);
+
+    function updateScene(seconds) {
+      const radius = 1;
+      lightPosition[0] = Math.cos(seconds) * radius;
+      lightPosition[1] = Math.sin(seconds) * radius;
+      lightPosition[2] = 4;
+
+      glMatrix.mat4.fromTranslation(cubeModelMatrix, [Math.cos(seconds * -2) * 2, Math.sin(seconds * -2) * 2, 0]);
+
+      glMatrix.mat4.lookAt(lightViewMatrix, lightPosition, target, up);
+      glMatrix.mat4.perspective(lightProjectionMatrix, parameter.fovy, 1, parameter.near, parameter.far);
+      glMatrix.mat4.fromRotationTranslationScale(textureMatrix, [0, 0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]);
+      glMatrix.mat4.multiply(textureMatrix, textureMatrix, lightProjectionMatrix);
+      glMatrix.mat4.multiply(textureMatrix, textureMatrix, lightViewMatrix);
+    }
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      const seconds = ms * 0.001;
+
+      updateScene(seconds);
+
+      ////////////////////////
+      // PASS 1: Shadow Pass
+      ////////////////////////
+      glMatrix.mat4.lookAt(viewMatrix, lightPosition, target, up);
+
+      ToyGL.setState(gl, {
+        cull: {
+          enable: true,
+          face: 'back',
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: [0, 0, textureSize, textureSize],
+        polygonOffset: {
+          enable: true,
+          factor: 1,
+          units: 1,
+        },
+      });
+
+      ToyGL.clear(gl, {
+        fb: framebuffer,
+        color: [0, 0, 0, 0],
+        depth: 1,
+      });
+
+      // draw sphere
+      ToyGL.draw(gl, {
+        vs: depthVs,
+        fs: depthFs,
+        attributes: {
+          a_position: sphere.position,
+        },
+        indices: sphere.indices,
+        uniforms: {
+          u_modelMatrix: sphereModelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: lightProjectionMatrix,
+        },
+        count: sphere.indices.length,
+        fb: framebuffer,
+      });
+
+      // draw cube
+      ToyGL.draw(gl, {
+        vs: depthVs,
+        fs: depthFs,
+        attributes: {
+          a_position: cube.position,
+        },
+        indices: cube.indices,
+        uniforms: {
+          u_modelMatrix: cubeModelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: lightProjectionMatrix,
+        },
+        count: cube.indices.length,
+        fb: framebuffer,
+      });
+
+      // draw ground
+      ToyGL.draw(gl, {
+        vs: depthVs,
+        fs: depthFs,
+        attributes: {
+          a_position: [
+            -1, -1, 0,
+             1, -1, 0,
+             1,  1, 0,
+            -1,  1, 0,
+          ],
+        },
+        indices: [0, 1, 2, 0, 2, 3],
+        uniforms: {
+          u_modelMatrix: groundModelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: lightProjectionMatrix,
+        },
+        count: 6,
+        fb: framebuffer,
+      });
+
+      ////////////////////////
+      // PASS 2: Forward Render
+      ////////////////////////
+
+      const eyeX = 4;
+      const eyeY = -10;
+      const eyeZ = parameter.eyeZ;
+      glMatrix.mat4.lookAt(viewMatrix, [eyeX, eyeY, eyeZ], target, up);
+
+      ToyGL.setState(gl, {
+        cull: {
+          enable: true,
+          face: 'back'
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+        viewport: [0, 0, gl.canvas.width, gl.canvas.height],
+        polygonOffset: {
+          enable: false,
+        },
+      });
+
+      ToyGL.clear(gl, {
+        fb: undefined,
+        color: [0, 0, 0, 1],
+        depth: 1,
+      });
+
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: sphere.position,
+          a_uv: sphere.texcoord,
+        },
+        indices: sphere.indices,
+        uniforms: {
+          u_modelMatrix: sphereModelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+          u_depthTexture: depthTexture,
+          u_texture: checkerboardTexture,
+          u_textureMatrix: textureMatrix,
+        },
+        count: sphere.indices.length,
+        fb: undefined,
+      });
+
+      // draw cube
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: cube.position,
+          a_uv: cube.texcoord,
+        },
+        indices: cube.indices,
+        uniforms: {
+          u_modelMatrix: cubeModelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+          u_depthTexture: depthTexture,
+          u_texture: checkerboardTexture,
+          u_textureMatrix: textureMatrix,
+        },
+        count: cube.indices.length,
+        fb: undefined,
+      });
+
+      // draw ground
+      ToyGL.draw(gl, {
+        vs: vs,
+        fs: fs,
+        attributes: {
+          a_position: [
+            -1, -1, 0,
+             1, -1, 0,
+             1,  1, 0,
+            -1,  1, 0,
+          ],
+          a_uv: [
+            0, 0,
+            1, 0,
+            1, 1,
+            0, 1,
+          ],
+        },
+        indices: [0, 1, 2, 0, 2, 3],
+        uniforms: {
+          u_modelMatrix: groundModelMatrix,
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+          u_depthTexture: depthTexture,
+          u_texture: checkerboardTexture,
+          u_textureMatrix: textureMatrix,
+        },
+        count: 6,
+        fb: undefined,
+      });
+
+      ////////////////////////
+      // PASS 3: Debug Pass
+      ////////////////////////
+
+      // draw light point
+      ToyGL.draw(gl, {
+        vs: `
+          attribute vec3 a_position;
+          uniform mat4 u_modelMatrix;
+          uniform mat4 u_viewMatrix;
+          uniform mat4 u_projectionMatrix;
+          void main() {
+            gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * vec4(a_position, 1);
+            gl_PointSize = 10.0;
+          }
+        `,
+        fs: `
+          precision highp float;
+          void main() {
+            gl_FragColor = vec4(1);
+          }
+        `,
+        attributes: {
+          a_position: [0, 0, 0],
+        },
+        uniforms: {
+          u_modelMatrix: glMatrix.mat4.fromTranslation(lightModelMatrix, lightPosition),
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+        },
+        count: 1,
+        primitiveType: gl.POINTS,
+      });
+
+      // draw frustum
+      ToyGL.draw(gl, {
+        vs: `
+          attribute vec3 a_position;
+          uniform mat4 u_modelMatrix;
+          uniform mat4 u_viewMatrix;
+          uniform mat4 u_projectionMatrix;
+          void main() {
+            gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * vec4(a_position, 1);
+            gl_PointSize = 10.0;
+          }
+        `,
+        fs: `
+          precision highp float;
+          void main() {
+            gl_FragColor = vec4(1);
+          }
+        `,
+        attributes: {
+          a_position: frustum.position,
+        },
+        indices: frustum.indices,
+        uniforms: {
+          u_modelMatrix: glMatrix.mat4.multiply(
+            glMatrix.mat4.create(),
+            glMatrix.mat4.invert(
+              glMatrix.mat4.create(),
+              lightViewMatrix,
+            ),
+            glMatrix.mat4.invert(
+              glMatrix.mat4.create(),
+              lightProjectionMatrix,
+            )
+          ),
+          u_viewMatrix: viewMatrix,
+          u_projectionMatrix: projectionMatrix,
+        },
+        count: 24,
+        primitiveType: gl.LINES,
+      });
+
+      // draw depth texture
+      if (parameter.showDepthTexture) {
+        ToyGL.setState(gl, {
+          viewport: [ 20, 20, 200, 200 ],
+          polygonOffset: {
+            enable: false,
+          },
+        });
+        ToyGL.draw(gl, {
+          vs: `
+            attribute vec3 a_position;
+            attribute vec2 a_uv;
+            varying vec2 v_uv;
+            void main() {
+              gl_Position = vec4(a_position, 1);
+              v_uv = a_uv;
+            }
+          `,
+          fs: `
+            precision highp float;
+            uniform sampler2D u_depthTexture;
+            varying vec2 v_uv;
+            void main() {
+              float depth = texture2D(u_depthTexture, v_uv).r;
+              gl_FragColor = vec4(vec3(depth), 1);
+            }
+          `,
+          attributes: {
+            a_position: [
+              -1, -1, 0,
+              1, -1, 0,
+              1,  1, 0,
+              -1,  1, 0
+            ],
+            a_uv: [
+              0, 0,
+              1, 0,
+              1, 1,
+              0, 1,
+            ]
+          },
+          indices: [
+            0, 1, 2,
+            0, 2, 3,
+          ],
+          uniforms: {
+            u_depthTexture: depthTexture
+          },
+          count: 6,
+        });
+      }
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
