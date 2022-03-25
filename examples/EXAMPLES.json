@@ -81,6 +81,10 @@
       {
         "label": "Screen-Door Transparency",
         "id": "screen-door-transparency"
+      },
+      {
+        "label": "Multisample",
+        "id": "msaa"
       }
     ]
   }
