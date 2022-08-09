@@ -5,10 +5,10 @@ import {
 } from './glUtils.js';
 import defined from './defined.js';
 import {
-  createAttributeBuffer,
   createIndicesBuffer,
   getIndicesType,
 } from './buffer.js';
+import createVAO from './createVAO.js';
 
 const cachedProgram = {};
 const cachedTextures = {};
@@ -17,59 +17,59 @@ function getNumberOfComponentsByType(type) {
   let numberOfComponents = 0;
 
   switch (type) {
-    case 5126: // gl.FLOAT
-      numberOfComponents = 1;
-      break;
-    case 35664: // gl.FLOAT_VEC2
-      numberOfComponents = 2;
-      break;
-    case 35665: // gl.FLOAT_VEC3
-      numberOfComponents = 3;
-      break;
-    case 35666: // gl.FLOAT_VEC4
-      numberOfComponents = 4;
-      break;
-    default:
-      throw new Error('Unrecognize ' + type + ' type.');
+  case 5126: // FLOAT
+    numberOfComponents = 1;
+    break;
+  case 35664: // FLOAT_VEC2
+    numberOfComponents = 2;
+    break;
+  case 35665: // gl.FLOAT_VEC3
+    numberOfComponents = 3;
+    break;
+  case 35666: // FLOAT_VEC4
+    numberOfComponents = 4;
+    break;
+  case 35674: // FLOAT_MAT2
+    numberOfComponents = 4;
+    break;
+  case 35675: // FLOAT_MAT3
+    numberOfComponents = 9;
+    break;
+  case 35676: // FLOAT_MAT4
+    numberOfComponents = 16;
+    break;
+  default:
+    throw new Error('Unrecognize ' + type + ' type.');
   }
   return numberOfComponents;
 }
 
 function getAttributeSize(activeAttribute) {
   const { name, size, type } = activeAttribute;
-  let s = 0;
-  switch (type) {
-    case 5126: // gl.FLOAT
-      s = size * 1;
-      break;
-    case 35664: // gl.FLOAT_VEC2
-      s = 2 * size;
-      break;
-    case 35665: // gl.FLOAT_VEC3
-      s = 3 * size;
-      break;
-    case 35666: // gl.FLOAT_VEC4
-      s = 4 * size;
-      break;
-    case 35674: // gl.FLOAT_MAT2
-      s = 4 * size;
-      break;
-    case 35675: // gl.FLOAT_MAT3
-      s = 9 * size;
-      break;
-    case 35676: // gl.FLOAT_MAT4
-      s = 16 * size;
-      break;
-    default:
-      console.warn(`Can not recognize attribute ${name} type, current type is ${type}`);
+  const componentCount = getNumberOfComponentsByType(type);
+  return size * componentCount;
+}
+
+const vaoCache = {};
+function getVaoKey(attributes, indices) {
+  let key = '';
+  for (const attributeName in attributes) {
+    if (Object.hasOwnProperty.call(attributes, attributeName)) {
+      const attribute = attributes[attributeName];
+      key += attribute.toString();
+    }
   }
 
-  return s;
+  if (indices) {
+    key += indices.toString();
+  }
+
+  return key;
 }
 
 /**
  * Execute a draw command.
- * @param {WebGLRenderingContext} gl 
+ * @param {WebGLRenderingContext|WebGL2RenderingContext} gl 
  * @param {Object} options 
  * @param {String} options.vs Vertex shader text
  * @param {String} options.fs Fragment shader text
@@ -121,50 +121,48 @@ function draw(gl, options) {
 
   // attributes
   const numberOfAttributes = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
-  const extVAO = gl.getExtension('OES_vertex_array_object');
+
   if (defined(vao)) {
-    if (extVAO) {
-      extVAO.bindVertexArrayOES(vao);
-    } else if (gl instanceof WebGL2RenderingContext) {
-      gl.bindVertexArray(vao);
-    } else {
-      throw new Error('this branch never should be executed.');
-    }
+
+    gl.bindVertexArray(vao);
 
   } else if (defined(attributes)) {
-    if (extVAO) {
-      extVAO.bindVertexArrayOES(null);
-    }
+    const vaoKey = getVaoKey(attributes, indices);
+    let vao = vaoCache[vaoKey];
+    if (!vao) {
+      const vaoAttributes = {};
+      for (let i = 0; i < numberOfAttributes; i++) {
+        const activeAttribute = gl.getActiveAttrib(program, i);
+        const attributeName = activeAttribute.name;
 
-    for (let i = 0; i < numberOfAttributes; i++) {
-      const activeAttribute = gl.getActiveAttrib(program, i);
-      const attributeName = activeAttribute.name;
+        if (Object.hasOwnProperty.call(attributes, attributeName)) {
+          const attribute = attributes[attributeName];
+          const attribLocation = gl.getAttribLocation(program, attributeName);
+  
+          if (attribLocation === -1) {
+            continue;
+          }
 
-      if (Object.hasOwnProperty.call(attributes, attributeName)) {
-        const attribute = attributes[attributeName];
-        const attribLocation = gl.getAttribLocation(program, attributeName);
-
-        if (attribLocation === -1) {
-          continue;
+          const size = getAttributeSize(activeAttribute);
+          vaoAttributes[attributeName] = {
+            location: attribLocation,
+            size: size,
+            data: attribute,
+          };
         }
-
-        const size = getAttributeSize(activeAttribute);
-        const buffer = createAttributeBuffer(gl, attribute, gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.enableVertexAttribArray(attribLocation);
-        gl.vertexAttribPointer(
-          attribLocation,
-          size,
-          gl.FLOAT,
-          false,
-          0,
-          0
-        );
-
       }
+
+      vao = createVAO(gl, {
+        attributes: vaoAttributes,
+        indices: indices,
+      });
+
+      vaoCache[vaoKey] = vao;
     }
+
+    gl.bindVertexArray(vao);
   } else {
-    throw new Error('vao or attributes must be defined.')
+    throw new Error('vao or attributes must be defined.');
   }
 
   // uniforms
@@ -174,6 +172,7 @@ function draw(gl, options) {
   for (let i = 0; i < numberOfUniforms; i++) {
     const activeUniform = gl.getActiveUniform(program, i);
     let uniformName = activeUniform.name;
+    const type = activeUniform.type;
     let isUniformArray = false;
 
     const indexOfBracket = uniformName.indexOf('[');
@@ -193,7 +192,6 @@ function draw(gl, options) {
 
       // support float, vec[234] uniform array
       if (isUniformArray) {
-        const type = activeUniform.type;
         const numberOfComponents = getNumberOfComponentsByType(type);
 
         gl['uniform' + numberOfComponents + 'fv'](uniformLocation, Array.from(uniform));
@@ -207,6 +205,8 @@ function draw(gl, options) {
 
         if (activeUniform.type === gl.SAMPLER_2D) {
           gl.bindTexture(gl.TEXTURE_2D, uniform);
+        } else if (activeUniform.type === gl.SAMPLER_3D) {
+          gl.bindTexture(gl.TEXTURE_3D, uniform);
         } else if (activeUniform.type === gl.SAMPLER_CUBE) {
           gl.bindTexture(gl.TEXTURE_CUBE_MAP, uniform);
         } else {
@@ -224,8 +224,10 @@ function draw(gl, options) {
           const transpose = false; // MUST be false
           gl['uniformMatrix' + order + 'fv'](uniformLocation, transpose, Array.from(uniform));
         }
-      } else if (typeOfUniform === 'number') {
+      } else if (type === gl.FLOAT /*typeOfUniform === 'number'*/) {
         gl.uniform1f(uniformLocation, uniform);
+      } else if (type === gl.BOOL || type === gl.INT) {
+        gl.uniform1i(uniformLocation, uniform);
       } else if (typeOfUniform === 'string') {
 
         if (currentTextureUnit > maximumTextureUnits) {
@@ -274,8 +276,9 @@ function draw(gl, options) {
 
     const indicesType = getIndicesType(indices);
     gl.drawElements(primitiveType, count, indicesType, 0);
-  } else if (extVAO && gl.getParameter(extVAO.VERTEX_ARRAY_BINDING_OES) && hasBoundElementArrayBuffer) {
-    gl.drawElements(primitiveType, count, gl.UNSIGNED_SHORT, 0);
+  } else if (hasBoundElementArrayBuffer) {
+    const indicesType = hasBoundElementArrayBuffer.indicesType;
+    gl.drawElements(primitiveType, count, indicesType, 0);
   } else {
     gl.drawArrays(primitiveType, 0, count);
   }

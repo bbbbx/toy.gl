@@ -11,12 +11,15 @@ import defaultValue from './defaultValue.js';
  * @param {ArrayBufferView | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement} options.data level 0 data
  * @param {Number} options.width
  * @param {Number} options.height
+ * @param {Number} [options.depth=1]
  * @param {Number} options.internalFormat For WebGL1, internal format must same with format.
  * @param {Number} options.format
  * @param {Number} options.type Texel data type, such as <code>gl.UNSIGNED_BYTE</code>, <code>gl.FLOAT</code>, <code>gl.UNSIGNED_INT</code>.
+ * @param {Number} [options.target=TEXTURE_2D]
  * @param {Boolean} [options.generateMipmap=false]
  * @param {Number} [options.wrapS=CLAMP_TO_EDGE]
  * @param {Number} [options.wrapT=CLAMP_TO_EDGE]
+ * @param {Number} [options.wrapR=CLAMP_TO_EDGE]
  * @param {Number} [options.minFilter=LINEAR]
  * @param {Number} [options.magFilter=LINEAR]
  * @param {Number} [options.flipY=false] Only valid for DOM-Element uploads
@@ -26,8 +29,10 @@ import defaultValue from './defaultValue.js';
 function createTexture(gl, options) {
   const { internalFormat, type, format, width, height, data, generateMipmap } = options;
 
+  const depth = defaultValue(options.depth, 1);
   const wrapS = defaultValue(options.wrapS, gl.CLAMP_TO_EDGE);
   const wrapT = defaultValue(options.wrapT, gl.CLAMP_TO_EDGE);
+  const wrapR = defaultValue(options.wrapR, gl.CLAMP_TO_EDGE);
   const minFilter = defaultValue(options.minFilter, gl.LINEAR);
   const magFilter = defaultValue(options.magFilter, gl.LINEAR);
 
@@ -42,22 +47,23 @@ function createTexture(gl, options) {
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiplyAlpha);
 
   const texture = gl.createTexture();
+  const textureTarget = defaultValue(options.target, gl.TEXTURE_2D);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.bindTexture(textureTarget, texture);
 
-  if (internalFormat === gl.DEPTH_COMPONENT || gl.DEPTH_STENCIL) {
-    gl.getExtension('WEBGL_depth_texture');
-  }
 
   if (type === gl.FLOAT) {
-    gl.getExtension('OES_texture_float');
-    if (minFilter === gl.LINEAR ||
+    if (gl instanceof WebGLRenderingContext && !gl._textureFloat) {
+      console.warn('Do not support float texture.');
+    }
+
+    if ((minFilter === gl.LINEAR ||
       minFilter === gl.LINEAR_MIPMAP_NEAREST ||
       minFilter === gl.NEAREST_MIPMAP_LINEAR ||
-      minFilter === gl.LINEAR_MIPMAP_LINEAR
-      ) {
-      gl.getExtension('OES_texture_float_linear');
+      minFilter === gl.LINEAR_MIPMAP_LINEAR) && !gl._textureFloatLinear
+    ) {
+      console.warn('Do not support float texture linear filter.');
     }
   }
 
@@ -70,27 +76,37 @@ function createTexture(gl, options) {
       levelData instanceof HTMLCanvasElement ||
       levelData instanceof HTMLVideoElement
     ) {
-      gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, levelData);
+      if (textureTarget === gl.TEXTURE_2D) {
+        gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, levelData);
+      } else if (textureTarget === gl.TEXTURE_3D) {
+        // TODO:
+      }
+
     } else {
       const border = 0;
-      gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, levelData);
+      if (textureTarget === gl.TEXTURE_2D) {
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, levelData);
+      } else if (textureTarget === gl.TEXTURE_3D) {
+        gl.texImage3D(gl.TEXTURE_3D, level, internalFormat, width, height, depth, border, format, type, levelData);
+        gl.texParameteri(textureTarget, gl.TEXTURE_WRAP_R, wrapR);
+      }
     }
   }
 
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapT);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, magFilter);
+  gl.texParameteri(textureTarget, gl.TEXTURE_WRAP_S, wrapS);
+  gl.texParameteri(textureTarget, gl.TEXTURE_WRAP_T, wrapT);
+  gl.texParameteri(textureTarget, gl.TEXTURE_MIN_FILTER, minFilter);
+  gl.texParameteri(textureTarget, gl.TEXTURE_MAG_FILTER, magFilter);
 
   if (generateMipmap === true) {
-    if (isPowerOfTwo(width) && isPowerOfTwo(height)) {
-      gl.generateMipmap(gl.TEXTURE_2D);
+    if ((isPowerOfTwo(width) && isPowerOfTwo(height)) || gl instanceof WebGL2RenderingContext) {
+      gl.generateMipmap(textureTarget);
     } else {
       console.warn('createTexture: texture size is NOT power of two, current is ' + width + 'x' + height + '.');
     }
   }
 
-  gl.bindTexture(gl.TEXTURE_2D, null);
+  gl.bindTexture(textureTarget, null);
 
   return texture;
 }

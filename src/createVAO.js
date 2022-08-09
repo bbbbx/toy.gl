@@ -1,5 +1,5 @@
-import { createAttributeBuffer, createIndicesBuffer } from "./buffer.js";
-import defined from "./defined.js";
+import { createAttributeBuffer, createIndicesBuffer } from './buffer.js';
+import defined from './defined.js';
 
 /**
  * Create a vertex array object. You can imagine it like this
@@ -39,23 +39,12 @@ import defined from "./defined.js";
  * @returns {WebGLVertexArrayObjectOES}
  */
 function createVAO(gl, options) {
-  let ext;
-  let vao;
+  if (!gl.createVertexArray) return undefined;
 
-  if (gl instanceof WebGLRenderingContext) {
-    ext = gl.getExtension('OES_vertex_array_object');
-    if (!ext) {
-      throw new Error('Your device does not support VAO(OES_vertex_array_object extension), try to use vertex attributes.');
-    }
+  const oldVao = gl.getParameter(gl.VERTEX_ARRAY_BINDING);
 
-    vao = ext.createVertexArrayOES();
-    ext.bindVertexArrayOES(vao);
-  } else if (gl instanceof WebGL2RenderingContext) {
-    vao = gl.createVertexArray();
-    gl.bindVertexArray(vao);
-  } else {
-    throw new Error('gl MUST be instance of WebGLRenderingContext or WebGL2RenderingContext.');
-  }
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
 
   const attributes = options.attributes;
   const indices = options.indices;
@@ -69,6 +58,7 @@ function createVAO(gl, options) {
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.enableVertexAttribArray(location);
 
+      // TODO: expose attribute data type
       const type = gl.FLOAT;
       const normalized = false;
       const stride = 0;
@@ -82,11 +72,7 @@ function createVAO(gl, options) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
   }
 
-  if (gl instanceof WebGLRenderingContext) {
-    ext.bindVertexArrayOES(null);
-  } else if (gl instanceof WebGL2RenderingContext) {
-    gl.bindVertexArray(null);
-  }
+  gl.bindVertexArray(oldVao);
 
   return vao;
 }

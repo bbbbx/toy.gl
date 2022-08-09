@@ -15,26 +15,19 @@ function isArrayBufferView(value) {
 
 function getIndicesType(indices) {
   let indicesType;
-
-  if (Array.isArray(indices)) {
-
-    indicesType = WebglConstant.UNSIGNED_SHORT;
-
-  } else if (indices instanceof Uint8Array) {
-
-    indicesType = WebglConstant.UNSIGNED_BYTE;
-
-  } else if (indices instanceof Uint16Array) {
-
-    indicesType = WebglConstant.UNSIGNED_SHORT;
-
-  } else if (indices instanceof Uint32Array) {
-
-    indicesType = WebglConstant.UNSIGNED_INT;
-
-  } else {
-    throw new Error('indices MUST be instance of Array, Uint8Array, Uint16Array or Uint32Array.');
+  let max = indices[0];
+  for (let i = 1; i < indices.length; i++) {
+    max = Math.max(max, indices[i]);
   }
+
+  if (max <= 255) {
+    indicesType = WebglConstant.UNSIGNED_BYTE;
+  } else if (max <= 65535) {
+    indicesType = WebglConstant.UNSIGNED_SHORT;
+  } else {
+    indicesType = WebglConstant.UNSIGNED_INT;
+  }
+
   return indicesType;
 }
 
@@ -47,7 +40,11 @@ function createBuffer(gl, bufferTarget, source, usage) {
 }
 
 function createAttributeBuffer(gl, typedArrayOrArray, usage) {
-  const bufferKey = typedArrayOrArray.toString();
+  let bufferKey = '';
+  for (const element of typedArrayOrArray) {
+    if (bufferKey.length > 10e5) break;
+    bufferKey += `${element.toFixed(3)},`;
+  }
   let buffer = cachedBuffer[bufferKey];
   if (buffer) {
     return buffer;
@@ -99,6 +96,8 @@ function createIndicesBuffer(gl, typedArrayOrArray, usage) {
   }
 
   buffer = createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, typedArray, usage);
+  // Store index buffer data type
+  buffer.indicesType = indicesType;
   cachedBuffer[bufferKey] = buffer;
   return buffer;
 }
