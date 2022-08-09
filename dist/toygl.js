@@ -10,6 +10,151 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ToyGL = factory());
 }(this, (function () { 'use strict';
 
+  function defaultValue(a, b) {
+    if (a === null || a === undefined) {
+      return b;
+    }
+    return a;
+  }
+
+  defaultValue.EMPTY_OBJECT = Object.freeze({});
+
+  const global = window;
+
+  /**
+   * Create an instance of WebGLRenderingContext or WebGL2RenderingContext.
+   * @param {Object} contextOptions 
+   * @param {Boolean} contextOptions.alpha 
+   * @param {Boolean} contextOptions.depth 
+   * @param {Boolean} contextOptions.stencil 
+   * @param {Boolean} contextOptions.antialias 
+   * @param {Boolean} contextOptions.preserveDrawingBuffer 
+   * @param {Boolean} contextOptions.premultipliedAlpha 
+   * @param {Boolean} contextOptions.requireWebgl2 
+   * @param {HTMLCanvasElement} contextOptions.canvas 
+   * @returns 
+   */
+  function createContext(contextOptions) {
+    contextOptions = defaultValue(contextOptions, defaultValue.EMPTY_OBJECT);
+
+    let canvas = contextOptions.canvas;
+    if (!canvas) {
+      canvas = global.document.createElement('canvas');
+      canvas.style.width = '100vw';
+      canvas.style.height = '100vh';
+      canvas.style.setProperty('display', 'block');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    let gl;
+    if (contextOptions.requireWebgl2) {
+      gl = canvas.getContext('webgl2', contextOptions);
+    } else {
+      gl = canvas.getContext('webgl', contextOptions);
+    }
+
+    // VAO extension
+    if (!gl.createVertexArray) {
+      const extVAO = gl.getExtension('OES_vertex_array_object');
+      if (extVAO) {
+        gl.createVertexArray = extVAO.createVertexArrayOES.bind(extVAO);
+        gl.bindVertexArray = extVAO.bindVertexArrayOES.bind(extVAO);
+        gl.deleteVertexArray = extVAO.deleteVertexArrayOES.bind(extVAO);
+        gl.isVertexArray = extVAO.isVertexArrayOES.bind(extVAO);
+        gl.VERTEX_ARRAY_BINDING = extVAO.VERTEX_ARRAY_BINDING_OES;
+      }
+    }
+
+    // Instanced Array extension
+    if (!gl.drawArraysInstanced) {
+      const extInstancedArrays = gl.getExtension('ANGLE_instanced_arrays');
+      if (extInstancedArrays) {
+        gl.drawArraysInstanced = extInstancedArrays.drawArraysInstancedANGLE.bind(extInstancedArrays);
+        gl.drawElementsInstanced = extInstancedArrays.drawElementsInstancedANGLE.bind(extInstancedArrays);
+        gl.vertexAttribDivisor = extInstancedArrays.vertexAttribDivisorANGLE.bind(extInstancedArrays);
+        gl.VERTEX_ATTRIB_ARRAY_DIVISOR = extInstancedArrays.VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE;
+      }
+    }
+
+    // Draw Buffers extension
+    if (!gl.drawBuffers) {
+      const extDrawBuffers = gl.getExtension('WEBGL_draw_buffers');
+      if (extDrawBuffers) {
+        gl.drawBuffers = extDrawBuffers.drawBuffersWEBGL.bind(extDrawBuffers);
+        for (let i = 1; i <= 15; i++) {
+          gl[`COLOR_ATTACHMENT${i}`] = extDrawBuffers[`COLOR_ATTACHMENT${i}_WEBGL`];
+          gl[`DRAW_BUFFER${i}`] = extDrawBuffers[`DRAW_BUFFER${i}_WEBGL`];
+        }
+
+        gl.MAX_COLOR_ATTACHMENTS = extDrawBuffers.MAX_COLOR_ATTACHMENTS_WEBGL;
+        gl.MAX_DRAW_BUFFERS = extDrawBuffers.MAX_DRAW_BUFFERS_WEBGL;
+        gl.MAX_DRAW_BUFFERS = extDrawBuffers.MAX_DRAW_BUFFERS_WEBGL;
+      }
+    }
+
+    // Texture Anisotropic Filter
+    if (!gl.MAX_TEXTURE_MAX_ANISOTROPY) {
+      const extTextureFilterAnisotropic = gl.getExtension('EXT_texture_filter_anisotropic');
+      if (extTextureFilterAnisotropic) {
+        gl.MAX_TEXTURE_MAX_ANISOTROPY = extTextureFilterAnisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT;
+        gl.TEXTURE_MAX_ANISOTROPY = extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT;
+      }
+    }
+
+    if (!gl.MIN) {
+      const extBlendMinmax = gl.getExtension('EXT_blend_minmax');
+      if (extBlendMinmax) {
+        gl.MIN = extBlendMinmax.MIN_EXT;
+        gl.MAX = extBlendMinmax.MAX_EXT;
+      }
+    }
+
+    if (!gl.FRAGMENT_SHADER_DERIVATIVE_HINT) {
+      const extStandardDerivatives = gl.getExtension('OES_standard_derivatives');
+      if (extStandardDerivatives) {
+        gl.FRAGMENT_SHADER_DERIVATIVE_HINT = extStandardDerivatives.FRAGMENT_SHADER_DERIVATIVE_HINT_OES;
+      }
+    }
+
+    if (!gl.UNSIGNED_INT_24_8) {
+      const extDepthTexture = gl.getExtension('WEBGL_depth_texture');
+      if (extDepthTexture) {
+        gl.UNSIGNED_INT_24_8 = extDepthTexture.UNSIGNED_INT_24_8_WEBGL;
+      }
+    }
+
+    if (!gl.HALF_FLOAT) {
+      const extTextureHalfFloat = gl.getExtension('OES_texture_half_float');
+      if (extTextureHalfFloat) {
+        gl.HALF_FLOAT = extTextureHalfFloat.HALF_FLOAT_OES;
+      }
+    }
+
+    // texture compression
+    gl.extS3tc = gl.getExtension('WEBGL_compressed_texture_s3tc');
+    gl.extPvrtc = gl.getExtension('WEBGL_compressed_texture_pvrtc');
+    gl.extAstc = gl.getExtension('WEBGL_compressed_texture_astc');
+    gl.extEtc = gl.getExtension('WEBG_compressed_texture_etc');
+    gl.extEtc1 = gl.getExtension('WEBG_compressed_texture_etc1');
+    gl.extBc7 = gl.getExtension('EXT_texture_compression_bptc');
+
+    gl.extDebugShaders = gl.getExtension('WEBGL_debug_shaders');
+
+    gl._elementIndexUint = !!gl.getExtension('OES_element_index_uint');
+    gl._fragDepth = !!gl.getExtension('EXT_frag_depth');
+    gl._textureFloat = !!gl.getExtension('OES_texture_float');
+    gl._textureFloatLinear = !!gl.getExtension('OES_texture_float_linear');
+
+    gl._colorBufferFloat = !!gl.getExtension('EXT_color_buffer_float');
+    gl._colorBufferHalfFloat = !!gl.getExtension('EXT_color_buffer_half_float');
+    gl._floatBlend = !!gl.getExtension('EXT_float_blend');
+
+    gl._shaderTextureLod = !!gl.getExtension('EXT_shader_texture_lod');
+
+    return gl;
+  }
+
   function defined(a) {
     return a !== null && a !== undefined;
   }
@@ -107,53 +252,6 @@
       throw new Error('gl.' + constantName + ' is not defined.');
     }
     return constant;
-  }
-
-  function defaultValue(a, b) {
-    if (a === null || a === undefined) {
-      return b;
-    }
-    return a;
-  }
-
-  defaultValue.EMPTY_OBJECT = Object.freeze({});
-
-  const global = window;
-
-  /**
-   * Create an instance of WebGLRenderingContext or WebGL2RenderingContext.
-   * @param {Object} contextOptions 
-   * @param {Boolean} contextOptions.alpha 
-   * @param {Boolean} contextOptions.depth 
-   * @param {Boolean} contextOptions.stencil 
-   * @param {Boolean} contextOptions.antialias 
-   * @param {Boolean} contextOptions.preserveDrawingBuffer 
-   * @param {Boolean} contextOptions.premultipliedAlpha 
-   * @param {Boolean} contextOptions.requireWebgl2 
-   * @param {HTMLCanvasElement} contextOptions.canvas 
-   * @returns 
-   */
-  function createContext(contextOptions) {
-    contextOptions = defaultValue(contextOptions, defaultValue.EMPTY_OBJECT);
-
-    let canvas = contextOptions.canvas;
-    if (!canvas) {
-      canvas = global.document.createElement('canvas');
-      canvas.style.width = '100vw';
-      canvas.style.height = '100vh';
-      canvas.style.setProperty('display', 'block');
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-
-    let gl;
-    if (contextOptions.requireWebgl2) {
-      gl = canvas.getContext('webgl2', contextOptions);
-    } else {
-      gl = canvas.getContext('webgl', contextOptions);
-    }
-
-    return gl;
   }
 
   function applyStencilStateSeparate(gl, face, state) {
@@ -858,12 +956,15 @@
    * @param {ArrayBufferView | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement} options.data level 0 data
    * @param {Number} options.width
    * @param {Number} options.height
+   * @param {Number} [options.depth=1]
    * @param {Number} options.internalFormat For WebGL1, internal format must same with format.
    * @param {Number} options.format
    * @param {Number} options.type Texel data type, such as <code>gl.UNSIGNED_BYTE</code>, <code>gl.FLOAT</code>, <code>gl.UNSIGNED_INT</code>.
+   * @param {Number} [options.target=TEXTURE_2D]
    * @param {Boolean} [options.generateMipmap=false]
    * @param {Number} [options.wrapS=CLAMP_TO_EDGE]
    * @param {Number} [options.wrapT=CLAMP_TO_EDGE]
+   * @param {Number} [options.wrapR=CLAMP_TO_EDGE]
    * @param {Number} [options.minFilter=LINEAR]
    * @param {Number} [options.magFilter=LINEAR]
    * @param {Number} [options.flipY=false] Only valid for DOM-Element uploads
@@ -873,8 +974,10 @@
   function createTexture(gl, options) {
     const { internalFormat, type, format, width, height, data, generateMipmap } = options;
 
+    const depth = defaultValue(options.depth, 1);
     const wrapS = defaultValue(options.wrapS, gl.CLAMP_TO_EDGE);
     const wrapT = defaultValue(options.wrapT, gl.CLAMP_TO_EDGE);
+    const wrapR = defaultValue(options.wrapR, gl.CLAMP_TO_EDGE);
     const minFilter = defaultValue(options.minFilter, gl.LINEAR);
     const magFilter = defaultValue(options.magFilter, gl.LINEAR);
 
@@ -889,22 +992,23 @@
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiplyAlpha);
 
     const texture = gl.createTexture();
+    const textureTarget = defaultValue(options.target, gl.TEXTURE_2D);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.bindTexture(textureTarget, texture);
 
-    if (internalFormat === gl.DEPTH_COMPONENT || gl.DEPTH_STENCIL) {
-      gl.getExtension('WEBGL_depth_texture');
-    }
 
     if (type === gl.FLOAT) {
-      gl.getExtension('OES_texture_float');
-      if (minFilter === gl.LINEAR ||
+      if (gl instanceof WebGLRenderingContext && !gl._textureFloat) {
+        console.warn('Do not support float texture.');
+      }
+
+      if ((minFilter === gl.LINEAR ||
         minFilter === gl.LINEAR_MIPMAP_NEAREST ||
         minFilter === gl.NEAREST_MIPMAP_LINEAR ||
-        minFilter === gl.LINEAR_MIPMAP_LINEAR
-        ) {
-        gl.getExtension('OES_texture_float_linear');
+        minFilter === gl.LINEAR_MIPMAP_LINEAR) && !gl._textureFloatLinear
+      ) {
+        console.warn('Do not support float texture linear filter.');
       }
     }
 
@@ -917,27 +1021,35 @@
         levelData instanceof HTMLCanvasElement ||
         levelData instanceof HTMLVideoElement
       ) {
-        gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, levelData);
+        if (textureTarget === gl.TEXTURE_2D) {
+          gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, levelData);
+        } else if (textureTarget === gl.TEXTURE_3D) ;
+
       } else {
         const border = 0;
-        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, levelData);
+        if (textureTarget === gl.TEXTURE_2D) {
+          gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, levelData);
+        } else if (textureTarget === gl.TEXTURE_3D) {
+          gl.texImage3D(gl.TEXTURE_3D, level, internalFormat, width, height, depth, border, format, type, levelData);
+          gl.texParameteri(textureTarget, gl.TEXTURE_WRAP_R, wrapR);
+        }
       }
     }
 
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrapT);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, magFilter);
+    gl.texParameteri(textureTarget, gl.TEXTURE_WRAP_S, wrapS);
+    gl.texParameteri(textureTarget, gl.TEXTURE_WRAP_T, wrapT);
+    gl.texParameteri(textureTarget, gl.TEXTURE_MIN_FILTER, minFilter);
+    gl.texParameteri(textureTarget, gl.TEXTURE_MAG_FILTER, magFilter);
 
     if (generateMipmap === true) {
-      if (isPowerOfTwo(width) && isPowerOfTwo(height)) {
-        gl.generateMipmap(gl.TEXTURE_2D);
+      if ((isPowerOfTwo(width) && isPowerOfTwo(height)) || gl instanceof WebGL2RenderingContext) {
+        gl.generateMipmap(textureTarget);
       } else {
         console.warn('createTexture: texture size is NOT power of two, current is ' + width + 'x' + height + '.');
       }
     }
 
-    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindTexture(textureTarget, null);
 
     return texture;
   }
@@ -1057,26 +1169,19 @@
 
   function getIndicesType(indices) {
     let indicesType;
-
-    if (Array.isArray(indices)) {
-
-      indicesType = WebGLConstant.UNSIGNED_SHORT;
-
-    } else if (indices instanceof Uint8Array) {
-
-      indicesType = WebGLConstant.UNSIGNED_BYTE;
-
-    } else if (indices instanceof Uint16Array) {
-
-      indicesType = WebGLConstant.UNSIGNED_SHORT;
-
-    } else if (indices instanceof Uint32Array) {
-
-      indicesType = WebGLConstant.UNSIGNED_INT;
-
-    } else {
-      throw new Error('indices MUST be instance of Array, Uint8Array, Uint16Array or Uint32Array.');
+    let max = indices[0];
+    for (let i = 1; i < indices.length; i++) {
+      max = Math.max(max, indices[i]);
     }
+
+    if (max <= 255) {
+      indicesType = WebGLConstant.UNSIGNED_BYTE;
+    } else if (max <= 65535) {
+      indicesType = WebGLConstant.UNSIGNED_SHORT;
+    } else {
+      indicesType = WebGLConstant.UNSIGNED_INT;
+    }
+
     return indicesType;
   }
 
@@ -1089,7 +1194,11 @@
   }
 
   function createAttributeBuffer(gl, typedArrayOrArray, usage) {
-    const bufferKey = typedArrayOrArray.toString();
+    let bufferKey = '';
+    for (const element of typedArrayOrArray) {
+      if (bufferKey.length > 10e5) break;
+      bufferKey += `${element.toFixed(3)},`;
+    }
     let buffer = cachedBuffer[bufferKey];
     if (buffer) {
       return buffer;
@@ -1141,6 +1250,8 @@
     }
 
     buffer = createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, typedArray, usage);
+    // Store index buffer data type
+    buffer.indicesType = indicesType;
     cachedBuffer[bufferKey] = buffer;
     return buffer;
   }
@@ -1183,23 +1294,12 @@
    * @returns {WebGLVertexArrayObjectOES}
    */
   function createVAO(gl, options) {
-    let ext;
-    let vao;
+    if (!gl.createVertexArray) return undefined;
 
-    if (gl instanceof WebGLRenderingContext) {
-      ext = gl.getExtension('OES_vertex_array_object');
-      if (!ext) {
-        throw new Error('Your device does not support VAO(OES_vertex_array_object extension), try to use vertex attributes.');
-      }
+    const oldVao = gl.getParameter(gl.VERTEX_ARRAY_BINDING);
 
-      vao = ext.createVertexArrayOES();
-      ext.bindVertexArrayOES(vao);
-    } else if (gl instanceof WebGL2RenderingContext) {
-      vao = gl.createVertexArray();
-      gl.bindVertexArray(vao);
-    } else {
-      throw new Error('gl MUST be instance of WebGLRenderingContext or WebGL2RenderingContext.');
-    }
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
 
     const attributes = options.attributes;
     const indices = options.indices;
@@ -1213,6 +1313,7 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.enableVertexAttribArray(location);
 
+        // TODO: expose attribute data type
         const type = gl.FLOAT;
         const normalized = false;
         const stride = 0;
@@ -1226,11 +1327,7 @@
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
     }
 
-    if (gl instanceof WebGLRenderingContext) {
-      ext.bindVertexArrayOES(null);
-    } else if (gl instanceof WebGL2RenderingContext) {
-      gl.bindVertexArray(null);
-    }
+    gl.bindVertexArray(oldVao);
 
     return vao;
   }
@@ -1291,59 +1388,59 @@
     let numberOfComponents = 0;
 
     switch (type) {
-      case 5126: // gl.FLOAT
-        numberOfComponents = 1;
-        break;
-      case 35664: // gl.FLOAT_VEC2
-        numberOfComponents = 2;
-        break;
-      case 35665: // gl.FLOAT_VEC3
-        numberOfComponents = 3;
-        break;
-      case 35666: // gl.FLOAT_VEC4
-        numberOfComponents = 4;
-        break;
-      default:
-        throw new Error('Unrecognize ' + type + ' type.');
+    case 5126: // FLOAT
+      numberOfComponents = 1;
+      break;
+    case 35664: // FLOAT_VEC2
+      numberOfComponents = 2;
+      break;
+    case 35665: // gl.FLOAT_VEC3
+      numberOfComponents = 3;
+      break;
+    case 35666: // FLOAT_VEC4
+      numberOfComponents = 4;
+      break;
+    case 35674: // FLOAT_MAT2
+      numberOfComponents = 4;
+      break;
+    case 35675: // FLOAT_MAT3
+      numberOfComponents = 9;
+      break;
+    case 35676: // FLOAT_MAT4
+      numberOfComponents = 16;
+      break;
+    default:
+      throw new Error('Unrecognize ' + type + ' type.');
     }
     return numberOfComponents;
   }
 
   function getAttributeSize(activeAttribute) {
     const { name, size, type } = activeAttribute;
-    let s = 0;
-    switch (type) {
-      case 5126: // gl.FLOAT
-        s = size * 1;
-        break;
-      case 35664: // gl.FLOAT_VEC2
-        s = 2 * size;
-        break;
-      case 35665: // gl.FLOAT_VEC3
-        s = 3 * size;
-        break;
-      case 35666: // gl.FLOAT_VEC4
-        s = 4 * size;
-        break;
-      case 35674: // gl.FLOAT_MAT2
-        s = 4 * size;
-        break;
-      case 35675: // gl.FLOAT_MAT3
-        s = 9 * size;
-        break;
-      case 35676: // gl.FLOAT_MAT4
-        s = 16 * size;
-        break;
-      default:
-        console.warn(`Can not recognize attribute ${name} type, current type is ${type}`);
+    const componentCount = getNumberOfComponentsByType(type);
+    return size * componentCount;
+  }
+
+  const vaoCache = {};
+  function getVaoKey(attributes, indices) {
+    let key = '';
+    for (const attributeName in attributes) {
+      if (Object.hasOwnProperty.call(attributes, attributeName)) {
+        const attribute = attributes[attributeName];
+        key += attribute.toString();
+      }
     }
 
-    return s;
+    if (indices) {
+      key += indices.toString();
+    }
+
+    return key;
   }
 
   /**
    * Execute a draw command.
-   * @param {WebGLRenderingContext} gl 
+   * @param {WebGLRenderingContext|WebGL2RenderingContext} gl 
    * @param {Object} options 
    * @param {String} options.vs Vertex shader text
    * @param {String} options.fs Fragment shader text
@@ -1395,50 +1492,48 @@
 
     // attributes
     const numberOfAttributes = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
-    const extVAO = gl.getExtension('OES_vertex_array_object');
+
     if (defined(vao)) {
-      if (extVAO) {
-        extVAO.bindVertexArrayOES(vao);
-      } else if (gl instanceof WebGL2RenderingContext) {
-        gl.bindVertexArray(vao);
-      } else {
-        throw new Error('this branch never should be executed.');
-      }
+
+      gl.bindVertexArray(vao);
 
     } else if (defined(attributes)) {
-      if (extVAO) {
-        extVAO.bindVertexArrayOES(null);
-      }
+      const vaoKey = getVaoKey(attributes, indices);
+      let vao = vaoCache[vaoKey];
+      if (!vao) {
+        const vaoAttributes = {};
+        for (let i = 0; i < numberOfAttributes; i++) {
+          const activeAttribute = gl.getActiveAttrib(program, i);
+          const attributeName = activeAttribute.name;
 
-      for (let i = 0; i < numberOfAttributes; i++) {
-        const activeAttribute = gl.getActiveAttrib(program, i);
-        const attributeName = activeAttribute.name;
+          if (Object.hasOwnProperty.call(attributes, attributeName)) {
+            const attribute = attributes[attributeName];
+            const attribLocation = gl.getAttribLocation(program, attributeName);
+    
+            if (attribLocation === -1) {
+              continue;
+            }
 
-        if (Object.hasOwnProperty.call(attributes, attributeName)) {
-          const attribute = attributes[attributeName];
-          const attribLocation = gl.getAttribLocation(program, attributeName);
-
-          if (attribLocation === -1) {
-            continue;
+            const size = getAttributeSize(activeAttribute);
+            vaoAttributes[attributeName] = {
+              location: attribLocation,
+              size: size,
+              data: attribute,
+            };
           }
-
-          const size = getAttributeSize(activeAttribute);
-          const buffer = createAttributeBuffer(gl, attribute, gl.STATIC_DRAW);
-          gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-          gl.enableVertexAttribArray(attribLocation);
-          gl.vertexAttribPointer(
-            attribLocation,
-            size,
-            gl.FLOAT,
-            false,
-            0,
-            0
-          );
-
         }
+
+        vao = createVAO(gl, {
+          attributes: vaoAttributes,
+          indices: indices,
+        });
+
+        vaoCache[vaoKey] = vao;
       }
+
+      gl.bindVertexArray(vao);
     } else {
-      throw new Error('vao or attributes must be defined.')
+      throw new Error('vao or attributes must be defined.');
     }
 
     // uniforms
@@ -1448,6 +1543,7 @@
     for (let i = 0; i < numberOfUniforms; i++) {
       const activeUniform = gl.getActiveUniform(program, i);
       let uniformName = activeUniform.name;
+      const type = activeUniform.type;
       let isUniformArray = false;
 
       const indexOfBracket = uniformName.indexOf('[');
@@ -1467,7 +1563,6 @@
 
         // support float, vec[234] uniform array
         if (isUniformArray) {
-          const type = activeUniform.type;
           const numberOfComponents = getNumberOfComponentsByType(type);
 
           gl['uniform' + numberOfComponents + 'fv'](uniformLocation, Array.from(uniform));
@@ -1481,6 +1576,8 @@
 
           if (activeUniform.type === gl.SAMPLER_2D) {
             gl.bindTexture(gl.TEXTURE_2D, uniform);
+          } else if (activeUniform.type === gl.SAMPLER_3D) {
+            gl.bindTexture(gl.TEXTURE_3D, uniform);
           } else if (activeUniform.type === gl.SAMPLER_CUBE) {
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, uniform);
           } else {
@@ -1498,8 +1595,10 @@
             const transpose = false; // MUST be false
             gl['uniformMatrix' + order + 'fv'](uniformLocation, transpose, Array.from(uniform));
           }
-        } else if (typeOfUniform === 'number') {
+        } else if (type === gl.FLOAT /*typeOfUniform === 'number'*/) {
           gl.uniform1f(uniformLocation, uniform);
+        } else if (type === gl.BOOL || type === gl.INT) {
+          gl.uniform1i(uniformLocation, uniform);
         } else if (typeOfUniform === 'string') {
 
           if (currentTextureUnit > maximumTextureUnits) {
@@ -1548,8 +1647,9 @@
 
       const indicesType = getIndicesType(indices);
       gl.drawElements(primitiveType, count, indicesType, 0);
-    } else if (extVAO && gl.getParameter(extVAO.VERTEX_ARRAY_BINDING_OES) && hasBoundElementArrayBuffer) {
-      gl.drawElements(primitiveType, count, gl.UNSIGNED_SHORT, 0);
+    } else if (hasBoundElementArrayBuffer) {
+      const indicesType = hasBoundElementArrayBuffer.indicesType;
+      gl.drawElements(primitiveType, count, indicesType, 0);
     } else {
       gl.drawArrays(primitiveType, 0, count);
     }
