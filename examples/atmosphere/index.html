@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atmosphere</title>
+  <script src="../../dist/toygl.js"></script>
+  <script src="../ThirdParty/gl-matrix-min.js"></script>
+  <script src="../ThirdParty/primitives.js"></script>
+  <style>html, body { margin: 0; }</style>
+</head>
+<body>
+  <script>
+    const gl = ToyGL.createContext();
+    document.body.appendChild(gl.canvas);
+
+    const canvas = gl.canvas;
+    const { vec3, vec4, mat4 } = glMatrix;
+
+    let normalizedQuadVert, commonFrag, transmittanceFrag, multiscatteringFrag, skyviewFrag, atmosphereVert, atmosphereFrag;
+    let shaderSourceReady = false;
+    Promise.all([
+      fetch('./NormalizedQuad.vert').then(res => res.text()),
+      fetch('./Common.frag').then(res => res.text()),
+      fetch('./Transmittance.frag').then(res => res.text()),
+      fetch('./Multiscattering.frag').then(res => res.text()),
+      fetch('./Skyview.frag').then(res => res.text()),
+      fetch('./Atmosphere.vert').then(res => res.text()),
+      fetch('./Atmosphere.frag').then(res => res.text()),
+    ]).then(textList => {
+      normalizedQuadVert = textList[0];
+      commonFrag = textList[1];
+      transmittanceFrag = textList[2];
+      multiscatteringFrag = textList[3];
+      skyviewFrag = textList[4];
+      atmosphereVert = textList[5];
+      atmosphereFrag = textList[6];
+
+      shaderSourceReady = true;
+    });
+
+    function createRGBA32FTexture(gl, width, height) {
+      return ToyGL.createTexture(gl, {
+        width: width,
+        height: height,
+        internalFormat: gl.RGBA,
+        format: gl.RGBA,
+        type: gl.FLOAT,
+        data: null,
+        minFilter: gl.LINEAR,
+        magFilter: gl.LINEAR,
+        wrapS: gl.CLAMP_TO_EDGE,
+        wrapT: gl.CLAMP_TO_EDGE,
+      });
+    }
+
+    const TRANSMITTANCE_WIDTH = 256;
+    const TRANSMITTANCE_HEIGHT = 64;
+    const SKYVIEW_WIDTH = 200;
+    const SKYVIEW_HEIGHT = 200;
+    const MULTISCATTERING_WIDTH = 200;
+    const MULTISCATTERING_HEIGHT = 200;
+    const transmittanceTexture = createRGBA32FTexture(gl, TRANSMITTANCE_WIDTH, TRANSMITTANCE_HEIGHT);
+    const multiscatteringTexture = createRGBA32FTexture(gl, MULTISCATTERING_WIDTH, MULTISCATTERING_HEIGHT);
+    const skyviewTexture = createRGBA32FTexture(gl, SKYVIEW_WIDTH, SKYVIEW_HEIGHT);
+
+    const transmittanceFramebuffer = ToyGL.createFramebuffer(gl, { colorTexture: transmittanceTexture });
+    const multiscatteringFramebuffer = ToyGL.createFramebuffer(gl, { colorTexture: multiscatteringTexture });
+    const skyviewFramebuffer = ToyGL.createFramebuffer(gl, { colorTexture: skyviewTexture });
+
+    const fovy = 40 / 180 * Math.PI;
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+    const near = 0.1;
+    const far = 1e3;
+    const projectionMatrix = mat4.perspective([], fovy, aspect, near, far);
+    const inverseProjectionMatrix = mat4.invert([], projectionMatrix);
+
+    let groundRadiusMM = 6.36;
+    let atmosphereRadiusMM = 6.46;
+    // Y-up, right hand, eye at 200 meter above the north pole
+    const eyePos = [0, groundRadiusMM + 0.0002, 0];
+    const target = [0, groundRadiusMM + 0.0002, -1];
+    const up = [0, 1, 0];
+    const viewMatrix = mat4.lookAt([], eyePos, target, up);
+    const cameraMatrix = mat4.invert([], viewMatrix);
+
+    // sunDir: in view space?
+    const sunDir = [0, 0.2, -1];
+    vec3.normalize(sunDir, sunDir);
+
+    canvas.addEventListener('mousemove', e => {
+      const x = (e.x/canvas.clientWidth) * 2 - 1;
+      const y = (1 - e.y/canvas.clientHeight) * 2 - 1;
+      const ndc = [x, y, 0, 1];
+      const viewSpace = vec4.transformMat4([], ndc, inverseProjectionMatrix);
+      sunDir[0] = viewSpace[0] / viewSpace[3],
+      sunDir[1] = viewSpace[1] / viewSpace[3],
+      sunDir[2] = viewSpace[2] / viewSpace[3],
+      vec3.normalize(sunDir, sunDir);
+    });
+
+    const atmosphereGeometry = primitives.createSphereVertices(atmosphereRadiusMM, 256, 256);
+    const atmosphereVAO = ToyGL.createVAO(gl, {
+      attributes: {
+        a_position: {
+          location: 0,
+          size: 3,
+          data: atmosphereGeometry.position,
+        },
+      },
+      indices: atmosphereGeometry.indices,
+    });
+    const ndcQuadVAO = ToyGL.createVAO(gl, {
+      attributes: {
+        a_position: {
+          location: 0,
+          size: 2,
+          data: [
+            -1, -1,
+             1, -1,
+            -1,  1,
+             1,  1,
+          ]
+        },
+      },
+      indices: [0, 1, 2, 1, 2, 3],
+    });
+
+    function render(ms) {
+      requestAnimationFrame(render);
+
+      if (shaderSourceReady === false) return;
+
+      const seconds = ms * 0.001;
+
+      // Transmittance
+      ToyGL.setState(gl, {
+        viewport: [0, 0, TRANSMITTANCE_WIDTH, TRANSMITTANCE_HEIGHT],
+      });
+      ToyGL.draw(gl, {
+        vs: `${normalizedQuadVert}`,
+        fs: `
+          precision highp float;
+          ${commonFrag}
+          ${transmittanceFrag}
+        `,
+        attributeLocations: {
+          a_position: 0,
+        },
+        uniforms: {
+          uResolution: [TRANSMITTANCE_WIDTH, TRANSMITTANCE_HEIGHT],
+          uGroundRadiusMM: groundRadiusMM,
+          uAtmosphereRadiusMM: atmosphereRadiusMM,
+        },
+        vao: ndcQuadVAO,
+        count: 6,
+        fb: transmittanceFramebuffer,
+      });
+
+      // Multi-scattering
+      ToyGL.setState(gl, {
+        viewport: [0, 0, MULTISCATTERING_WIDTH, MULTISCATTERING_HEIGHT],
+      });
+      ToyGL.draw(gl, {
+        vs: `${normalizedQuadVert}`,
+        fs: `
+          precision highp float;
+          ${commonFrag}
+          ${multiscatteringFrag}
+        `,
+        attributeLocations: {
+          a_position: 0,
+        },
+        uniforms: {
+          uResolution: [MULTISCATTERING_WIDTH, MULTISCATTERING_HEIGHT],
+          uGroundRadiusMM: groundRadiusMM,
+          uAtmosphereRadiusMM: atmosphereRadiusMM,
+          uTransmittance: transmittanceTexture,
+        },
+        vao: ndcQuadVAO,
+        count: 6,
+        fb: multiscatteringFramebuffer,
+      });
+
+      // Sky-View
+      ToyGL.setState(gl, {
+        viewport: [0, 0, SKYVIEW_WIDTH, SKYVIEW_HEIGHT],
+      });
+      ToyGL.draw(gl, {
+        vs: `${normalizedQuadVert}`,
+        fs: `
+          precision highp float;
+          ${commonFrag}
+          ${skyviewFrag}
+        `,
+        attributeLocations: {
+          a_position: 0,
+        },
+        uniforms: {
+          uResolution: [SKYVIEW_WIDTH, SKYVIEW_HEIGHT],
+          uGroundRadiusMM: groundRadiusMM,
+          uAtmosphereRadiusMM: atmosphereRadiusMM,
+          uTransmittance: transmittanceTexture,
+          uMultiscattering: multiscatteringTexture,
+          viewPos: eyePos,
+          uSunDir: sunDir,
+        },
+        vao: ndcQuadVAO,
+        count: 6,
+        fb: skyviewFramebuffer,
+      });
+
+      // Atmosphere
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+      });
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight],
+      });
+      ToyGL.draw(gl, {
+        vs: `${atmosphereVert}`,
+        fs: `
+          precision highp float;
+          ${commonFrag}
+          ${atmosphereFrag}
+        `,
+        attributeLocations: {
+          a_position: 0,
+        },
+        uniforms: {
+          uView: viewMatrix,
+          uProjection: projectionMatrix,
+          uEyePos: eyePos,
+          uSunDir: sunDir,
+          uResolution: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+          uTransmittance: transmittanceTexture,
+          uMultiscattering: multiscatteringTexture,
+          uSkyView: skyviewTexture,
+          uGroundRadiusMM: groundRadiusMM,
+          uAtmosphereRadiusMM: atmosphereRadiusMM,
+        },
+        vao: atmosphereVAO,
+        count: atmosphereGeometry.indices.length,
+        fb: null,
+      });
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

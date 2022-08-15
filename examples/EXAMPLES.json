@@ -56,6 +56,10 @@
       {
         "label": "Vertex Picking",
         "id": "vertex_picking"
+      },
+      {
+        "label": "Atmosphere",
+        "id": "atmosphere"
       }
     ]
   },
