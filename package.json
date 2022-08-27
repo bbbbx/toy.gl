@@ -1,6 +1,6 @@
 {
   "name": "toygl",
-  "version": "0.0.1",
+  "version": "a0",
   "description": "A toy-level WebGL library.",
   "main": "dist/toygl.js",
   "module": "dist/toygl.esm.js",
@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "rollup --config rollup.config.js --watch",
     "build": "rollup --config rollup.config.js",
+    "docs": "jsdoc -c ./jsdoc/conf.js -d docs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -30,6 +31,7 @@
   "author": "Venus <venus@venusworld.cn>",
   "license": "MIT",
   "devDependencies": {
+    "jsdoc": "^3.6.11",
     "rollup": "^2.47.0",
     "rollup-plugin-terser": "^7.0.2"
   }
