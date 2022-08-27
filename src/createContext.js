@@ -13,7 +13,7 @@ const global = window;
  * @param {Boolean} contextOptions.premultipliedAlpha 
  * @param {Boolean} contextOptions.requireWebgl2 
  * @param {HTMLCanvasElement} contextOptions.canvas 
- * @returns 
+ * @returns {WebGLRenderingContext|WebGL2RenderingContext}
  */
 function createContext(contextOptions) {
   contextOptions = defaultValue(contextOptions, defaultValue.EMPTY_OBJECT);
@@ -112,6 +112,16 @@ function createContext(contextOptions) {
     }
   }
 
+  if (!gl.RGBA32F) {
+    const extColorBufferFloat = gl.getExtension('WEBGL_color_buffer_float');
+    if (extColorBufferFloat) {
+      gl.RGBA32F = extColorBufferFloat.RGBA32F_EXT;
+      gl.FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE = extColorBufferFloat.FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE_EXT;
+      gl.UNSIGNED_NORMALIZED = extColorBufferFloat.UNSIGNED_NORMALIZED_EXT;
+      gl._colorBufferFloat = !!extColorBufferFloat;
+    }
+  }
+
   // texture compression
   gl.extS3tc = gl.getExtension('WEBGL_compressed_texture_s3tc');
   gl.extPvrtc = gl.getExtension('WEBGL_compressed_texture_pvrtc');
@@ -127,7 +137,7 @@ function createContext(contextOptions) {
   gl._textureFloat = !!gl.getExtension('OES_texture_float');
   gl._textureFloatLinear = !!gl.getExtension('OES_texture_float_linear');
 
-  gl._colorBufferFloat = !!gl.getExtension('EXT_color_buffer_float');
+  gl._colorBufferFloat = gl._colorBufferFloat || !!gl.getExtension('EXT_color_buffer_float');
   gl._colorBufferHalfFloat = !!gl.getExtension('EXT_color_buffer_half_float');
   gl._floatBlend = !!gl.getExtension('EXT_float_blend');
 

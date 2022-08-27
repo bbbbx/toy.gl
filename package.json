@@ -1,6 +1,6 @@
 {
   "name": "toygl",
-  "version": "a0",
+  "version": "a1",
   "description": "A toy-level WebGL library.",
   "main": "dist/toygl.js",
   "module": "dist/toygl.esm.js",
@@ -14,6 +14,7 @@
     "dev": "rollup --config rollup.config.js --watch",
     "build": "rollup --config rollup.config.js",
     "docs": "jsdoc -c ./jsdoc/conf.js -d docs",
+    "printVersion": "node -e \"console.log(require('./package.json').version)\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

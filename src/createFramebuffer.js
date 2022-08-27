@@ -8,6 +8,16 @@ const FRAMEBUFFER_STATUS = {
   36061: 'FRAMEBUFFER_UNSUPPORTED',
 };
 
+/**
+ * 
+ * @param {WebGLRenderingContext|WebGL2RenderingContext} gl 
+ * @param {Object} options 
+ * @param {WebGLTexture} options.colorTexture
+ * @param {WebGLTexture} options.depthTexture
+ * @param {WebGLRenderbuffer} options.depthRenderbuffer
+ * @param {Array<WebGLTexture|WebGLRenderbuffer>} options.colorAttachments
+ * @returns {WebGLFramebuffer}
+ */
 function createFramebuffer(gl, options) {
   const { colorTexture, depthTexture, depthRenderbuffer } = options;
   const colorAttachments = defaultValue(options.colorAttachments, [ colorTexture ])

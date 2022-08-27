@@ -74,7 +74,7 @@ function getVaoKey(attributes, indices) {
  * @param {String} options.vs Vertex shader text
  * @param {String} options.fs Fragment shader text
  * @param {Object} [options.attributes] use <code>attributes</code> or <code>vao</code> property.
- * @param {WebGLVertexArrayObjectOES} [options.vao] @see {@link createVAO}
+ * @param {WebGLVertexArrayObjectOES|WebGLVertexArrayObject} [options.vao] @see {@link createVAO}
  * @param {Object} [options.attributeLocations] If you define <code>vao</code> property, in order to correspond to attribute location of VAO, you must specify the location for the vertex attribute of shader program.
  * @param {Object} [options.uniforms] The key of object is uniform name, value can be string(texture image file path), number, Array, ArrayBufferView. Uniform array is supported.
  * @param {Array | Uint8Array | Uint16Array | Uint32Array} [options.indices] Vertex indices, when using an Array, it is treated as Uint16Array, so if the maximum value of indices is greater then 65535, Uint32Array MUST be used.
@@ -215,15 +215,19 @@ function draw(gl, options) {
 
         gl.uniform1i(uniformLocation, currentTextureUnit);
         currentTextureUnit++;
-      } else if (isArrayLike(uniform)) {
-        const size = uniform.length;
-        if (size <= 4) {
-          gl['uniform' + size + 'fv' ](uniformLocation, uniform);
-        } else if (size <= 16) {
-          const order = Math.floor(Math.sqrt(size));
-          const transpose = false; // MUST be false
-          gl['uniformMatrix' + order + 'fv'](uniformLocation, transpose, Array.from(uniform));
-        }
+      } else if (type === gl.FLOAT_MAT4) {
+        const transpose = false;
+        gl.uniformMatrix4fv(uniformLocation, transpose, Array.from(uniform));
+      } else if (type === gl.FLOAT_MAT3) {
+        gl.uniformMatrix3fv(uniformLocation, transpose, Array.from(uniform));
+      } else if (type === gl.FLOAT_MAT2) {
+        gl.uniformMatrix2fv(uniformLocation, transpose, Array.from(uniform));
+      } else if (type === gl.FLOAT_VEC4) {
+        gl.uniform4fv(uniformLocation, Array.from(uniform));
+      } else if (type === gl.FLOAT_VEC3) {
+        gl.uniform3fv(uniformLocation, Array.from(uniform));
+      } else if (type === gl.FLOAT_VEC2) {
+        gl.uniform2fv(uniformLocation, Array.from(uniform));
       } else if (type === gl.FLOAT /*typeOfUniform === 'number'*/) {
         gl.uniform1f(uniformLocation, uniform);
       } else if (type === gl.BOOL || type === gl.INT) {

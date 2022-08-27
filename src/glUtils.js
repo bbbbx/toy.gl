@@ -4,11 +4,13 @@ const global = window;
 
 /**
  * Create a program and/or bind attribute location.
+ * 
+ * @ignore
  * @param {WebGLRenderingContext} gl 
  * @param {String} vertexShaderSource 
  * @param {String} fragmentShaderSource 
  * @param {Object} attributeLocations { [attributeName]: location }
- * @returns 
+ * @returns {WebGLProgram}
  */
 function createProgram(gl, vertexShaderSource, fragmentShaderSource, attributeLocations) {
   const vs = gl.createShader(gl.VERTEX_SHADER);

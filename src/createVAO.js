@@ -35,8 +35,8 @@ import defined from './defined.js';
  *   }
  * }
  * </pre>
- * @param {Object} options.indices ELEMENT_ARRAY_BUFFER of vertex array.
- * @returns {WebGLVertexArrayObjectOES}
+ * @param {Object} options.indices `ELEMENT_ARRAY_BUFFER` of vertex array.
+ * @returns {WebGLVertexArrayObjectOES|WebGLVertexArrayObject}
  */
 function createVAO(gl, options) {
   if (!gl.createVertexArray) return undefined;

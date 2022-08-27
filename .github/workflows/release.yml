@@ -32,6 +32,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
+      - name: Install dependencies
+        run: npm install
       - name: Build library
         run: npm run build
       - name: version
@@ -76,6 +78,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
+      - name: Install dependencies
+        run: npm install
       - name: Generate documentation
         run: npm run docs
       - name: Upload artifact
