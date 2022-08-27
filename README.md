@@ -1,4 +1,6 @@
 # ToyGL
+[![Release](https://github.com/bbbbx/toy.gl/actions/workflows/release.yml/badge.svg?branch=a1)](https://github.com/bbbbx/toy.gl/actions/workflows/release.yml)
+[![Deploy static content to Pages](https://github.com/bbbbx/toy.gl/actions/workflows/pages.yml/badge.svg?branch=a1)](https://github.com/bbbbx/toy.gl/actions/workflows/pages.yml)
 
 A low level WebGL library that wraps the WebGL API into commands and state. Before using this library, you need to understand the basics of WebGL, such as vertex attribute, uniform, GLSL.
 
@@ -67,83 +69,9 @@ Draw a triangle:
 
 ## Documentation
 
-Public funciton:
+See [https://bbbbx.github.io/toy.gl/docs/](https://bbbbx.github.io/toy.gl/docs/).
 
-- `ToyGL.createContext(contextAttributes): WebGLRenderingContext`
-- `ToyGL.setState(gl, state): void`
-- `ToyGL.clear(gl, options): void`
-- `ToyGL.draw(gl, options): void`
-- `ToyGL.createTexture(gl, options): WebGLTexture`
-- `ToyGL.createCubeMap(gl, options): WebGLTexture`
-- `ToyGL.createFramebuffer(gl, options): WebGLFramebuffer`
-
-### `ToyGL.createContext(contextAttributes)`
-
-Create a full screen canvas, and return an instance of `WebGLRenderingContext`.
-
-The `contextAttributes` object has the following property, same as `canvas.getContext()`:
-
-- `alpha`: bool
-- `depth`: bool
-- `stencil`: bool
-- `antialias`: bool
-- `premultipliedAlpha`: bool
-- `preserveDrawingBuffer`: bool
-
-### `ToyGL.setState(gl, state)`
-
-Set WebGL global state.
-
-The `state` object has the following property:
-- `cull`: Object
-  - `enable`: bool
-  - `face`: string, one of `back`, `front`, `front_and_back`.
-- `depthTest`: Object
-  - `enable`: bool
-  - `func`: string
-  - `write`: bool
-- `stencilTest`: Object
-- `colorMask`: Array
-- `blend`: Object
-- `viewport`: Array
-- `scissor`: Object
-  - `enable`: bool
-  - `rect`: Array
-
-All properties are optional.
-
-### `ToyGL.clear(gl, options)`
-
-Execute a clear command. Clear color buffer, depth buffer or stencil buffer.
-
-The `options` object has the following property:
-
-- `fb`: WebGLFramebuffer
-- `color`: Array
-- `depth`: number
-- `stencil`: number
-
-### `ToyGL.draw(gl, options)`
-
-Execute a draw command, i.e. draw primitives.
-
-The `options` object has the following property:
-
-- `vs`: string
-- `fs`: string
-- `attributes`: Object
-- `indices`: Array, optional
-- `uniforms`: Object
-- `count`: number
-- `fb`: WebGLFramebuffer
-
-### `createTexture(gl, options)`
-
-### `createCubeMap(gl, options)`
-
-### `createFramebuffer(gl, options)`
-
-## Build
+## Build manually
 
 install dependencies:
 
