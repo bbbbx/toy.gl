@@ -15,6 +15,4 @@ export { default as Cartesian4 } from './Math/Cartesian4.js';
 export { default as Matrix3 } from './Math/Matrix3.js';
 export { default as Matrix4 } from './Math/Matrix4.js';
 export { default as Quaternion } from './Math/Quaternion.js';
-import * as Math from './Math/Math.js';
-export { Math };
-// export { * as Math } from './Math/Math.js';
+export { default as Math } from './Math/Math.js';

@@ -1,6 +1,6 @@
 import defaultValue from '../defaultValue.js';
 import defined from '../defined.js';
-import * as MMath from './Math.js';
+import MMath from './Math.js';
 
 /**
  * A 3D Cartesian point.

@@ -4,7 +4,7 @@ import defaultValue from './defaultValue.js';
 
 /**
  * Create a WebGLTexture.
- * @memberof ToyGL
+ *
  * @param {WebGLRenderingContext} gl 
  * @param {Object} options 
  * @param {Array.<ArrayBufferView | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement>} options.levels all levels data
@@ -85,6 +85,7 @@ function createTexture(gl, options) {
     } else {
       const border = 0;
       if (textureTarget === gl.TEXTURE_2D) {
+        // For WebGL1, internal format must be same with format!
         gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, levelData);
       } else if (textureTarget === gl.TEXTURE_3D) {
         gl.texImage3D(gl.TEXTURE_3D, level, internalFormat, width, height, depth, border, format, type, levelData);
