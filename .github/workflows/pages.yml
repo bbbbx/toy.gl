@@ -42,6 +42,8 @@ jobs:
       - run: npm ci
       - name: Generate documentation
         run: npm run docs
+      - name: Build distribution
+        run: npm run build
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact

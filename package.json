@@ -1,6 +1,6 @@
 {
   "name": "toygl",
-  "version": "a1",
+  "version": "alpha0",
   "description": "A toy-level WebGL library.",
   "main": "dist/toygl.js",
   "module": "dist/toygl.esm.js",

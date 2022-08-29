@@ -27,7 +27,7 @@ jobs:
       - name: Build library
         run: npm run build
       - name: pack into zip
-        run: zip --junk-paths dist dist/*
+        run: zip -r ToyGL.zip . -x "node_modules/*"
       - name: version
         run: echo "::set-output name=version::$(node -e "console.log(require('./package.json').version)")"
         id: version
@@ -48,6 +48,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./dist.zip
-          asset_name: dist.zip
+          asset_path: ./ToyGL.zip
+          asset_name: ToyGL-${{ steps.version.outputs.version }}.zip
           asset_content_type: application/zip
