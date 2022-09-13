@@ -1,3 +1,4 @@
+import defaultValue from '../defaultValue.js';
 
 /**
  * A set of 4-dimensional coordinates used to represent rotation in 3-dimensional space.
@@ -46,7 +47,7 @@ function Quaternion(x, y, z, w) {
  *
  * @returns {String} A string representing this Quaternion.
  */
- Quaternion.prototype.toString = function () {
+Quaternion.prototype.toString = function () {
   return `(${this.x}, ${this.y}, ${this.z}, ${this.w})`;
 };
 

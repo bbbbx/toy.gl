@@ -216,12 +216,11 @@ function draw(gl, options) {
         gl.uniform1i(uniformLocation, currentTextureUnit);
         currentTextureUnit++;
       } else if (type === gl.FLOAT_MAT4) {
-        const transpose = false;
-        gl.uniformMatrix4fv(uniformLocation, transpose, Array.from(uniform));
+        gl.uniformMatrix4fv(uniformLocation, false /*transpose*/, Array.from(uniform));
       } else if (type === gl.FLOAT_MAT3) {
-        gl.uniformMatrix3fv(uniformLocation, transpose, Array.from(uniform));
+        gl.uniformMatrix3fv(uniformLocation, false /*transpose*/, Array.from(uniform));
       } else if (type === gl.FLOAT_MAT2) {
-        gl.uniformMatrix2fv(uniformLocation, transpose, Array.from(uniform));
+        gl.uniformMatrix2fv(uniformLocation, false /*transpose*/, Array.from(uniform));
       } else if (type === gl.FLOAT_VEC4) {
         gl.uniform4fv(uniformLocation, Array.from(uniform));
       } else if (type === gl.FLOAT_VEC3) {

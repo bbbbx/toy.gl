@@ -1,9 +1,9 @@
 import defined from './defined.js';
 import {
-  validateGLConstantDefination,
+  validateGLConstantDefinition,
   validateStencilFunc,
   validateStencilOp,
-} from "./glUtils.js";
+} from './glUtils.js';
 
 function applyStencilStateSeparate(gl, face, state) {
   if (defined(state.writeMask)) {
@@ -88,7 +88,7 @@ export default function setState(gl, state) {
     // pass = (ref & readMask) func (stencilValue & redMask)
     // If the stencil test fails, the incoming fragment is discarded
     // if (!pass)
-         // update stencilValue
+    //   update stencilValue
     //   stencilValue = failOp(ref, stencilValue) & writeMask
     // else if zfail
     //   zfailOp
@@ -109,9 +109,9 @@ export default function setState(gl, state) {
 
   if (blend) {
     if (blend.enable === true) {
-      gl.enable(gl.BLEND)
+      gl.enable(gl.BLEND);
     } else if (blend.enable === false) {
-      gl.disable(gl.BLEND)
+      gl.disable(gl.BLEND);
     }
 
     if (blend.blendColor) {
@@ -167,17 +167,17 @@ export default function setState(gl, state) {
       const SRCALPHA = srcAlpha.toUpperCase();
       const DSTALPHA = dstAlpha.toUpperCase();
 
-      const glSrcRGB = validateGLConstantDefination(gl, SRCRGB);
-      const glDstRGB = validateGLConstantDefination(gl, DSTRGB);
-      const glSrcAlpha = validateGLConstantDefination(gl, SRCALPHA);
-      const glDstAlpha = validateGLConstantDefination(gl, DSTALPHA);
+      const glSrcRGB = validateGLConstantDefinition(gl, SRCRGB);
+      const glDstRGB = validateGLConstantDefinition(gl, DSTRGB);
+      const glSrcAlpha = validateGLConstantDefinition(gl, SRCALPHA);
+      const glDstAlpha = validateGLConstantDefinition(gl, DSTALPHA);
 
       gl.blendFuncSeparate(glSrcRGB, glDstRGB, glSrcAlpha, glDstAlpha);
     } else if (defined(blend.blendFunc)) {
       const srcFuncName = blend.blendFunc[0].toUpperCase();
       const dstFuncName = blend.blendFunc[1].toUpperCase();
-      const src = validateGLConstantDefination(gl, srcFuncName);
-      const dst = validateGLConstantDefination(gl, dstFuncName);
+      const src = validateGLConstantDefinition(gl, srcFuncName);
+      const dst = validateGLConstantDefinition(gl, dstFuncName);
       gl.blendFunc(src, dst);
     }
   }

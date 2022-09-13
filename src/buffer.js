@@ -61,7 +61,7 @@ function createAttributeBuffer(gl, typedArrayOrArray, usage) {
     throw new Error('Buffer data' + typedArrayOrArray + 'must be TypedArray or Array ');
   }
 
-  buffer = createBuffer(gl, gl.ARRAY_BUFFER, typedArray, usage)
+  buffer = createBuffer(gl, gl.ARRAY_BUFFER, typedArray, usage);
   cachedBuffer[bufferKey] = buffer;
   return buffer;
 }

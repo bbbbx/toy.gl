@@ -29,7 +29,7 @@ import Cartesian3 from './Cartesian3.js';
  * @see Matrix3.fromRotationY
  * @see Matrix3.fromRotationZ
  */
- function Matrix3(
+function Matrix3(
   column0Row0,
   column1Row0,
   column2Row0,

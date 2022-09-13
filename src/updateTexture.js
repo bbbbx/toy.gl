@@ -1,4 +1,4 @@
-import defaultValue from "./defaultValue";
+import defaultValue from './defaultValue.js';
 
 /**
  * Update texture data.
@@ -21,7 +21,7 @@ function updateTexture(gl, texture, source) {
   if (source instanceof HTMLImageElement ||
     source instanceof HTMLCanvasElement ||
     source instanceof HTMLVideoElement) {
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoElem);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
   } else {
 
     const { width, height, arrayBufferView } = source;

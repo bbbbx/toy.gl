@@ -131,7 +131,7 @@ Cartesian4.normalize = function (cartesian, result) {
     isNaN(result.z) ||
     isNaN(result.w)
   ) {
-    throw new Error("normalized result is not a number");
+    throw new Error('normalized result is not a number');
   }
 
   return result;

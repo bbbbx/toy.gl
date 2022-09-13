@@ -152,10 +152,6 @@ Matrix4.fromColumnMajorArray = function (values, result) {
  * @returns {Matrix4} The modified result parameter, or a new Matrix4 instance if one was not provided.
  */
 Matrix4.fromRowMajorArray = function (values, result) {
-  //>>includeStart('debug', pragmas.debug);
-  Check.defined("values", values);
-  //>>includeEnd('debug');
-
   if (!defined(result)) {
     return new Matrix4(
       values[0],
@@ -328,7 +324,7 @@ Matrix4.fromTranslationQuaternionRotationScale = function (
  * @param {Matrix4} [result] The object in which the result will be stored, if undefined a new instance will be created.
  * @returns {Matrix4} The modified result parameter, or a new Matrix4 instance if one was not provided.
  */
- Matrix4.fromTranslationRotationScale = function (
+Matrix4.fromTranslationRotationScale = function (
   translationRotationScale,
   result
 ) {
@@ -558,7 +554,7 @@ Matrix4.computePerspectiveFieldOfView = function (
  * @param {Matrix4} result The object in which the result will be stored.
  * @returns {Matrix4} The modified result parameter.
  */
- Matrix4.computeView = function (position, direction, up, right, result) {
+Matrix4.computeView = function (position, direction, up, right, result) {
   result[0] = right.x;
   result[1] = up.x;
   result[2] = -direction.x;
@@ -646,7 +642,7 @@ Matrix4.getColumn = function (matrix, index, result) {
  * //     [18.0, 19.0, 97.0, 21.0]
  * //     [22.0, 23.0, 96.0, 25.0]
  */
- Matrix4.setColumn = function (matrix, index, cartesian, result) {
+Matrix4.setColumn = function (matrix, index, cartesian, result) {
   result = Matrix4.clone(matrix, result);
   const startIndex = index * 4;
   result[startIndex] = cartesian.x;
@@ -684,7 +680,7 @@ Matrix4.getColumn = function (matrix, index, result) {
  *
  * // a.x = 18.0; a.y = 19.0; a.z = 20.0; a.w = 21.0;
  */
- Matrix4.getRow = function (matrix, index, result) {
+Matrix4.getRow = function (matrix, index, result) {
   const x = matrix[index];
   const y = matrix[index + 4];
   const z = matrix[index + 8];
@@ -1055,7 +1051,7 @@ Matrix4.multiply = function (left, right, result) {
  * // Instead of Matrix4.multiply(m, Matrix4.fromRotationTranslation(rotation), m);
  * Matrix4.multiplyByMatrix3(m, rotation, m);
  */
- Matrix4.multiplyByMatrix3 = function (matrix, rotation, result) {
+Matrix4.multiplyByMatrix3 = function (matrix, rotation, result) {
   const left0 = matrix[0];
   const left1 = matrix[1];
   const left2 = matrix[2];
@@ -1149,7 +1145,7 @@ Matrix4.multiplyByVector = function (matrix, cartesian, result) {
  * //   Cartesian3 p = ...
  * //   Matrix4.multiplyByVector(matrix, new Cartesian4(p.x, p.y, p.z, 0.0), result);
  */
- Matrix4.multiplyByPointAsVector = function (matrix, cartesian, result) {
+Matrix4.multiplyByPointAsVector = function (matrix, cartesian, result) {
   const vX = cartesian.x;
   const vY = cartesian.y;
   const vZ = cartesian.z;
@@ -1593,7 +1589,7 @@ Matrix4.inverse = function (matrix, result) {
     }
 
     throw new Error(
-      "matrix is not invertible because its determinate is zero."
+      'matrix is not invertible because its determinate is zero.'
     );
   }
 
@@ -1719,7 +1715,7 @@ Matrix4.prototype.equals = function (right) {
  * @param {Number} [epsilon=0] The epsilon to use for equality testing.
  * @returns {Boolean} <code>true</code> if they are within the provided epsilon, <code>false</code> otherwise.
  */
- Matrix4.prototype.equalsEpsilon = function (right, epsilon) {
+Matrix4.prototype.equalsEpsilon = function (right, epsilon) {
   return Matrix4.equalsEpsilon(this, right, epsilon);
 };
 

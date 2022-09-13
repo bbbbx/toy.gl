@@ -20,7 +20,7 @@ const FRAMEBUFFER_STATUS = {
  */
 function createFramebuffer(gl, options) {
   const { colorTexture, depthTexture, depthRenderbuffer } = options;
-  const colorAttachments = defaultValue(options.colorAttachments, [ colorTexture ])
+  const colorAttachments = defaultValue(options.colorAttachments, [ colorTexture ]);
 
   const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);

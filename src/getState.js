@@ -96,7 +96,7 @@ export default function getState(gl) {
   // gl.pixelStorei(pname, param)
   const packAlignment = gl.getParameter(gl.PACK_ALIGNMENT);
   const unpackAlignment = gl.getParameter(gl.UNPACK_ALIGNMENT);
-  const unpackColorspaceConversionWebgl = gl.getParameter(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL)
+  const unpackColorspaceConversionWebgl = gl.getParameter(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL);
   const unpackFlipYWebgl = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
   const unpackPremultiplyAlphaWebgl = gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL);
 

@@ -1,4 +1,4 @@
-import defined from "./defined";
+import defined from './defined.js';
 
 const global = window;
 
@@ -75,37 +75,29 @@ function setCanvasToDisplaySize(canvas) {
 
 function validateStencilFunc(func) {
   func = func.toUpperCase();
-  if (func === 'NEVER' ||
+  return !!(func === 'NEVER' ||
     func === 'ALWAYS' ||
     func === 'LESS' ||
     func === 'LEQUAL' ||
     func === 'NOTEQUAL' ||
     func === 'EQUAL' ||
     func === 'GREATER' ||
-    func === 'GEQUAL'
-  ) {
-    return true;
-  }
-  return false;
+    func === 'GEQUAL');
 }
 
 function validateStencilOp(op) {
   op = op.toUpperCase();
-  if (op === 'KEEP' ||
+  return !!(op === 'KEEP' ||
     op === 'ZERO' ||
     op === 'REPLACE' ||
     op === 'INCR' ||
     op === 'DECR' ||
     op === 'INVERT' ||
     op === 'INCR_WRAP' ||
-    op === 'DECR_WRAP'
-  ) {
-    return true;
-  }
-  return false;
+    op === 'DECR_WRAP');
 }
 
-function validateGLConstantDefination(gl, constantName) {
+function validateGLConstantDefinition(gl, constantName) {
   const constant = gl[constantName];
   if (!defined(constant)) {
     throw new Error('gl.' + constantName + ' is not defined.');
@@ -114,7 +106,7 @@ function validateGLConstantDefination(gl, constantName) {
 }
 
 export {
-  validateGLConstantDefination,
+  validateGLConstantDefinition as validateGLConstantDefinition,
   validateStencilFunc,
   validateStencilOp,
   createProgram,

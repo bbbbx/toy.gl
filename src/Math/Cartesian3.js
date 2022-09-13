@@ -76,7 +76,7 @@ Cartesian3.fromSpherical = function(spherical, result) {
   result.z = Math.cos(theta) * radius;
 
   return result;
-}
+};
 
 /**
  * Duplicates a Cartesian3 instance.
@@ -150,7 +150,7 @@ Cartesian3.distance = function (left, right) {
  * @param {Cartesian3} result The object onto which to store the result.
  * @returns {Cartesian3} The modified result parameter.
  */
- Cartesian3.normalize = function (cartesian, result) {
+Cartesian3.normalize = function (cartesian, result) {
   const magnitude = Cartesian3.magnitude(cartesian);
 
   result.x = cartesian.x / magnitude;
@@ -158,7 +158,7 @@ Cartesian3.distance = function (left, right) {
   result.z = cartesian.z / magnitude;
 
   if (isNaN(result.x) || isNaN(result.y) || isNaN(result.z)) {
-    throw new Error("normalized result is not a number");
+    throw new Error('normalized result is not a number');
   }
 
   return result;
@@ -172,7 +172,7 @@ Cartesian3.distance = function (left, right) {
  * @param {Cartesian3} right The second Cartesian.
  * @returns {Number} The dot product.
  */
- Cartesian3.dot = function (left, right) {
+Cartesian3.dot = function (left, right) {
   return left.x * right.x + left.y * right.y + left.z * right.z;
 };
 
@@ -184,7 +184,7 @@ Cartesian3.distance = function (left, right) {
  * @param {Cartesian3} result The object onto which to store the result.
  * @returns {Cartesian3} The modified result parameter.
  */
- Cartesian3.multiplyComponents = function (left, right, result) {
+Cartesian3.multiplyComponents = function (left, right, result) {
   result.x = left.x * right.x;
   result.y = left.y * right.y;
   result.z = left.z * right.z;
@@ -199,7 +199,7 @@ Cartesian3.distance = function (left, right) {
  * @param {Cartesian3} result The object onto which to store the result.
  * @returns {Cartesian3} The modified result parameter.
  */
- Cartesian3.divideComponents = function (left, right, result) {
+Cartesian3.divideComponents = function (left, right, result) {
   result.x = left.x / right.x;
   result.y = left.y / right.y;
   result.z = left.z / right.z;
@@ -214,7 +214,7 @@ Cartesian3.distance = function (left, right) {
  * @param {Cartesian3} result The object onto which to store the result.
  * @returns {Cartesian3} The modified result parameter.
  */
- Cartesian3.add = function (left, right, result) {
+Cartesian3.add = function (left, right, result) {
   result.x = left.x + right.x;
   result.y = left.y + right.y;
   result.z = left.z + right.z;
@@ -259,7 +259,7 @@ Cartesian3.multiplyByScalar = function (cartesian, scalar, result) {
  * @param {Cartesian3} result The object onto which to store the result.
  * @returns {Cartesian3} The modified result parameter.
  */
- Cartesian3.divideByScalar = function (cartesian, scalar, result) {
+Cartesian3.divideByScalar = function (cartesian, scalar, result) {
   result.x = cartesian.x / scalar;
   result.y = cartesian.y / scalar;
   result.z = cartesian.z / scalar;
@@ -289,7 +289,7 @@ Cartesian3.negate = function (cartesian, result) {
  * @param {Cartesian3} [right] The second Cartesian.
  * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
  */
- Cartesian3.equals = function (left, right) {
+Cartesian3.equals = function (left, right) {
   return (
     left === right ||
     (defined(left) &&
@@ -311,7 +311,7 @@ Cartesian3.negate = function (cartesian, result) {
  * @param {Number} [absoluteEpsilon=relativeEpsilon] The absolute epsilon tolerance to use for equality testing.
  * @returns {Boolean} <code>true</code> if left and right are within the provided epsilon, <code>false</code> otherwise.
  */
- Cartesian3.equalsEpsilon = function (
+Cartesian3.equalsEpsilon = function (
   left,
   right,
   relativeEpsilon,
@@ -350,7 +350,7 @@ Cartesian3.negate = function (cartesian, result) {
  * @param {Cartesian3} result The object onto which to store the result.
  * @returns {Cartesian3} The cross product.
  */
- Cartesian3.cross = function (left, right, result) {
+Cartesian3.cross = function (left, right, result) {
   const leftX = left.x;
   const leftY = left.y;
   const leftZ = left.z;

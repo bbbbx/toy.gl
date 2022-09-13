@@ -1,4 +1,4 @@
-import defaultValue from '../defaultValue';
+import defaultValue from '../defaultValue.js';
 import defined from '../defined.js';
 
 /**
@@ -23,7 +23,7 @@ function Spherical(phi, theta, radius) {
    * @type {Number}
    * @default 0.0
    */
-   this.theta = defaultValue(theta, 0);
+  this.theta = defaultValue(theta, 0);
   /**
    * The radius component.
    * @type {Number}
@@ -136,7 +136,7 @@ Spherical.equalsEpsilon = function (left, right, epsilon) {
  *
  * @returns {String} A string representing this instance.
  */
- Spherical.prototype.toString = function () {
+Spherical.prototype.toString = function () {
   return `(${this.phi}, ${this.theta}, ${this.radius})`;
 };
 
