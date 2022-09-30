@@ -417,6 +417,26 @@ Cartesian3.cross = function (left, right, result) {
   return result;
 };
 
+
+/**
+ * Stores the provided instance into the provided array.
+ *
+ * @param {Cartesian3} value The value to pack.
+ * @param {Number[]} array The array to pack into.
+ * @param {Number} [startingIndex=0] The index into the array at which to start packing the elements.
+ *
+ * @returns {Number[]} The array that was packed into
+ */
+Cartesian3.pack = function (value, array, startingIndex) {
+  startingIndex = defaultValue(startingIndex, 0);
+
+  array[startingIndex++] = value.x;
+  array[startingIndex++] = value.y;
+  array[startingIndex] = value.z;
+
+  return array;
+};
+
 /**
  * An immutable Cartesian3 instance initialized to (0.0, 0.0, 0.0).
  *

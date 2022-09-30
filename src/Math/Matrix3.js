@@ -1,6 +1,7 @@
 import defaultValue from '../defaultValue.js';
 import defined from '../defined.js';
 import Cartesian3 from './Cartesian3.js';
+import MMath from './Math.js';
 
 /**
  * A 3x3 matrix, indexable as a column-major order array.
@@ -460,6 +461,145 @@ Matrix3.fromRotationZ = function (angle, result) {
   result[7] = 0.0;
   result[8] = 1.0;
 
+  return result;
+};
+
+/**
+ * Computes the product of a matrix and a column vector.
+ *
+ * @param {Matrix3} matrix The matrix.
+ * @param {Cartesian3} cartesian The column.
+ * @param {Cartesian3} result The object onto which to store the result.
+ * @returns {Cartesian3} The modified result parameter.
+ */
+Matrix3.multiplyByVector = function (matrix, cartesian, result) {
+  const vX = cartesian.x;
+  const vY = cartesian.y;
+  const vZ = cartesian.z;
+
+  const x = matrix[0] * vX + matrix[3] * vY + matrix[6] * vZ;
+  const y = matrix[1] * vX + matrix[4] * vY + matrix[7] * vZ;
+  const z = matrix[2] * vX + matrix[5] * vY + matrix[8] * vZ;
+
+  result.x = x;
+  result.y = y;
+  result.z = z;
+  return result;
+};
+
+
+/**
+ * Computes the product of a matrix and a scalar.
+ *
+ * @param {Matrix3} matrix The matrix.
+ * @param {Number} scalar The number to multiply by.
+ * @param {Matrix3} result The object onto which to store the result.
+ * @returns {Matrix3} The modified result parameter.
+ */
+Matrix3.multiplyByScalar = function (matrix, scalar, result) {
+  result[0] = matrix[0] * scalar;
+  result[1] = matrix[1] * scalar;
+  result[2] = matrix[2] * scalar;
+  result[3] = matrix[3] * scalar;
+  result[4] = matrix[4] * scalar;
+  result[5] = matrix[5] * scalar;
+  result[6] = matrix[6] * scalar;
+  result[7] = matrix[7] * scalar;
+  result[8] = matrix[8] * scalar;
+  return result;
+};
+
+/**
+ * Computes the determinant of the provided matrix.
+ *
+ * @param {Matrix3} matrix The matrix to use.
+ * @returns {Number} The value of the determinant of the matrix.
+ */
+Matrix3.determinant = function (matrix) {
+  const m11 = matrix[0];
+  const m21 = matrix[3];
+  const m31 = matrix[6];
+  const m12 = matrix[1];
+  const m22 = matrix[4];
+  const m32 = matrix[7];
+  const m13 = matrix[2];
+  const m23 = matrix[5];
+  const m33 = matrix[8];
+
+  return (
+    m11 * (m22 * m33 - m23 * m32) +
+    m12 * (m23 * m31 - m21 * m33) +
+    m13 * (m21 * m32 - m22 * m31)
+  );
+};
+
+/**
+ * Computes the inverse of the provided matrix.
+ *
+ * @param {Matrix3} matrix The matrix to invert.
+ * @param {Matrix3} result The object onto which to store the result.
+ * @returns {Matrix3} The modified result parameter.
+ *
+ * @exception {Error} matrix is not invertible.
+ */
+Matrix3.inverse = function (matrix, result) {
+  const m11 = matrix[0];
+  const m21 = matrix[1];
+  const m31 = matrix[2];
+  const m12 = matrix[3];
+  const m22 = matrix[4];
+  const m32 = matrix[5];
+  const m13 = matrix[6];
+  const m23 = matrix[7];
+  const m33 = matrix[8];
+
+  const determinant = Matrix3.determinant(matrix);
+
+  if (Math.abs(determinant) <= MMath.EPSILON15) {
+    throw new Error("matrix is not invertible");
+  }
+
+  result[0] = m22 * m33 - m23 * m32;
+  result[1] = m23 * m31 - m21 * m33;
+  result[2] = m21 * m32 - m22 * m31;
+  result[3] = m13 * m32 - m12 * m33;
+  result[4] = m11 * m33 - m13 * m31;
+  result[5] = m12 * m31 - m11 * m32;
+  result[6] = m12 * m23 - m13 * m22;
+  result[7] = m13 * m21 - m11 * m23;
+  result[8] = m11 * m22 - m12 * m21;
+
+  const scale = 1.0 / determinant;
+  return Matrix3.multiplyByScalar(result, scale, result);
+};
+
+/**
+ * Computes the transpose of the provided matrix.
+ *
+ * @param {Matrix3} matrix The matrix to transpose.
+ * @param {Matrix3} result The object onto which to store the result.
+ * @returns {Matrix3} The modified result parameter.
+ */
+Matrix3.transpose = function (matrix, result) {
+  const column0Row0 = matrix[0];
+  const column0Row1 = matrix[3];
+  const column0Row2 = matrix[6];
+  const column1Row0 = matrix[1];
+  const column1Row1 = matrix[4];
+  const column1Row2 = matrix[7];
+  const column2Row0 = matrix[2];
+  const column2Row1 = matrix[5];
+  const column2Row2 = matrix[8];
+
+  result[0] = column0Row0;
+  result[1] = column0Row1;
+  result[2] = column0Row2;
+  result[3] = column1Row0;
+  result[4] = column1Row1;
+  result[5] = column1Row2;
+  result[6] = column2Row0;
+  result[7] = column2Row1;
+  result[8] = column2Row2;
   return result;
 };
 

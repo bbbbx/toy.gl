@@ -1,29 +1,21 @@
-/*
- * Partial implementation of
- *    "A Scalable and Production Ready Sky and Atmosphere Rendering Technique"
- *    by Sébastien Hillaire (2020).
- * Very much referenced and copied Sébastien's provided code: 
- *    https://github.com/sebh/UnrealEngineSkyAtmosphere
- * and AndrewHelmer's shadertoy implementation:
- *    https://www.shadertoy.com/view/slSXRW
- */
 
 // varying vec3 viewRay;
 varying vec2 uv;
 varying vec4 ndc;
 
 
-uniform sampler2D uTransmittance;
-uniform sampler2D uMultiscattering;
-uniform sampler2D uSkyView;
+uniform sampler2D uStarFieldTexture;
+uniform sampler2D uRealStars;
+uniform sampler2D uMilkWayTexture;
 
-uniform vec3 uEyePos;
-// uniform vec3 uSunDir;
+// unit megameter, so this is 10m
+#define PLANET_RADIUS_OFFSET 0.001*1e-3
+
 uniform mat4 uInvViewProjection;
 uniform vec4 uViewport;
 
 vec3 getValFromSkyLUT(vec3 rayDir, vec3 sunDir) {
-  vec3 viewPos = uEyePos;
+  vec3 viewPos = uViewPos;
 
   float height = length(viewPos);
   vec3 up = viewPos / height;
@@ -48,7 +40,7 @@ vec3 getValFromSkyLUT(vec3 rayDir, vec3 sunDir) {
   float v = 0.5 + 0.5*sign(altitudeAngle)*sqrt(abs(altitudeAngle)*2.0/PI);
   vec2 uv = vec2(azimuthAngle / (2.0*PI), v);
 
-  return texture2D(uSkyView, uv).rgb;
+  return texture2D(uSkyViewLutTexture, uv).rgb;
 }
 
 vec3 sunWithBloom(vec3 rayDir, vec3 sunDir) {
@@ -92,7 +84,10 @@ vec3 GetLightDiskLuminance(vec3 worldPos, vec3 worldDir, float uGroundRadiusMM, 
   float ViewDotLight = dot(worldDir, lightDir);
   if (ViewDotLight > lightDiscCosHalfApexAngle) {
     // vec3 transmittanceToLight = GetAtmosphereTransmittance()
-    vec3 transmittanceToLight = getValFromTLUT(uTransmittance, worldPos, lightDir);
+    float worldPosHeight = length(worldPos);
+    vec3 upVector = worldPos / worldPosHeight;
+    float cosZenith = dot(upVector, lightDir);
+    vec3 transmittanceToLight = getTransmittance(cosZenith, worldPosHeight);
     return transmittanceToLight * lightDiskLuminance;
   }
 
@@ -107,7 +102,7 @@ vec3 GetLightDiskLuminance(vec3 worldPos, vec3 worldDir, vec3 lightDir, float li
   if (t < 0.0) {
     vec3 LightDiskLuminance = GetLightDiskLuminance(
       worldPos, worldDir, uGroundRadiusMM, uAtmosphereRadiusMM,
-      uTransmittance,
+      uTransmittanceLutTexture,
       lightDir, lightDiscCosHalfApexAngle, lightDiskLuminance
     );
 
@@ -127,33 +122,113 @@ vec3 GetLightDiskLuminance(vec3 worldPos, vec3 worldDir, vec3 lightDir, float li
   return vec3(0);
 }
 
+uniform vec3 uTopLeft;
+uniform vec3 uTopRight;
+uniform vec3 uBottomLeft;
+uniform vec3 uBottomRight;
+uniform sampler2D uDepthTexture;
+uniform sampler2D uSceneColorTexture;
+
 void main() {
+  if (texture2D(uDepthTexture, uv).r != 1.0) {
+    // 
+    vec3 sceneColor = texture2D(uSceneColorTexture, uv).rgb;
+    float L0oN = clamp(dot(uAtmosphereLightDirection[0], sceneColor), 0.0, 1.0);
+    float L1oN = clamp(dot(uAtmosphereLightDirection[1], sceneColor), 0.0, 1.0);
+    // gl_FragColor.rgb = vec3(L0oN*0.1 + L1oN*0.01);
+    gl_FragColor.rgb = sceneColor * 0.03;
+    gl_FragColor.a = 1.0;
+    return;
+
+    discard;
+  }
 
   // vec3 worldPos = screenToWorld(gl_FragCoord.xyz, uInvViewProjection, uViewport);
-  vec3 worldPos = screenToWorld(ndc, uInvViewProjection);
+  // vec3 worldPos = screenToWorld(ndc, uInvViewProjection) * 1e-6;
   // vec3 rayDir = normalize(viewRay);
-  vec3 rayDir = normalize(worldPos - uEyePos);
-  // gl_FragColor = vec4(ndc);return;
+  vec3 viewPos = uViewPos;
+  float viewHeight = length(viewPos);
+  // vec3 rayDir = normalize(worldPos - viewPos);
 
-  vec2 uv;
+  vec3 bottom = mix(uBottomLeft, uBottomRight, vec3(uv.x));
+  vec3 top = mix(uTopLeft, uTopRight, vec3(uv.x));
+  vec3 rayDir = mix(bottom, top, vec3(uv.y));
+  rayDir = normalize(rayDir);
+  // gl_FragColor = vec4(rayDir, 1);return;
+  // gl_FragColor = vec4(uv, 0, 1);return;
+  // gl_FragColor = vec4(0.4, 0.5, 0.6, 1);return;
+
+
+  vec2 skyViewLutUv;
   vec3 rayDirLocal = uSkyViewLutReferential * rayDir;
-  float viewHeight = length(uEyePos);
-  SkyViewLutParamsToUv(rayDirLocal, viewHeight, uv);
+  SkyViewLutParamsToUv(rayDirLocal, viewHeight, skyViewLutUv);
   // gl_FragColor = vec4(rayDirLocal, 1);return;
   // gl_FragColor = vec4(gl_FragCoord.xy/uViewport.zw, 0, 1);return;
 
 // 因为是以 sunDir 确定 x 轴，所以要传 uAtmosphereLightDirection[0]
+  vec3 lum = vec3(0);
+  vec3 startPos;
   // vec3 lum = getValFromSkyLUT(rayDirLocal, uAtmosphereLightDirection[0]);
-  vec3 lum = texture2D(uSkyView, uv).rgb;
+  if (viewHeight < uAtmosphereRadiusMM) {
+    lum += texture2D(uSkyViewLutTexture, skyViewLutUv).rgb;
+  } else {
+    float atmoDistance = rayIntersectSphere(viewPos, rayDir, uAtmosphereRadiusMM);
+    if (atmoDistance >= 0.0) {
+      vec3 upVector = viewPos / viewHeight;
+      // vec3 upOffset = upVector * -PLANET_RADIUS_OFFSET;
+      float offset = max(PLANET_RADIUS_OFFSET, (viewHeight-uAtmosphereRadiusMM)*(0.1/20.0*1e-3));
+      vec3 upOffset = upVector * -offset;
+      startPos = viewPos + rayDir * atmoDistance + upOffset;
 
-  lum += GetLightDiskLuminance(uEyePos, rayDir, uAtmosphereLightDirection[0],
+      // startPos += rayDir * 0.1*1e-3; // 0.1km
+
+      // float groundDistance = rayIntersectSphere(startPos, rayDir, uGroundRadiusMM);
+      // atmoDistance = rayIntersectSphere(startPos, rayDir, uGroundRadiusMM);
+      // float tMax = groundDistance > 0.0 ? groundDistance : atmoDistance;
+      lum += raymarchScattering(
+        startPos,
+        rayDir,
+        uAtmosphereLightDirection[0].xyz,
+        uAtmosphereLightDirection[1].xyz,
+        uAtmosphereLightColor[0].xyz,
+        uAtmosphereLightColor[1].xyz);
+
+      // if (all(equal(lum, vec3(0)))) {
+      //   lum += vec3(0,1,0);
+      // }
+      // gl_FragColor = vec4(lum,1);
+      // return;
+    }
+  }
+
+
+  // uAtmosphereLightDirection to worldDir
+  lum += GetLightDiskLuminance(viewPos, rayDir, uAtmosphereLightDirection[0],
     uAtmosphereLightDiscCosHalfApexAngle[0], uAtmosphereLightDiscLuminance[0]);
 #if SECOND_ATMOSPHERE_LIGHT_ENABLED
-  lum += GetLightDiskLuminance(uEyePos, rayDir, uAtmosphereLightDirection[1],
+  lum += GetLightDiskLuminance(viewPos, rayDir, uAtmosphereLightDirection[1],
     uAtmosphereLightDiscCosHalfApexAngle[1], uAtmosphereLightDiscLuminance[1]);
 #endif
 
-  // TODO: bloom
+  // Add Stars Luminance
+  if (rayIntersectSphere(viewPos, rayDir, uGroundRadiusMM) <= 0.0) {
+    lum += vec3(texture2D(uStarFieldTexture, uv)).r;
+
+    float longitude = atan(rayDir.y, rayDir.x);
+    float latitude = asin(rayDir.z);
+    vec2 uv = vec2(longitude/PI*0.5+0.5, latitude/(PI/2.0)*0.5+0.5);
+    lum += texture2D(uMilkWayTexture, uv).rgb * 0.005;
+    // lum = vec3(rayDir);
+    // lum = vec3(uv, 0);
+  }
+  // lum = normalize(worldPos);
+  // lum = rayDir;
+  // lum = rayDirLocal;
+
+  // TODO: view 位于大气外则直接 ray marching
+
+  // lum += vec3(texture2D(uStarFieldTexture, vec2(uv.x, 1.-uv.y)).r);
+  // lum = vec3(uv, 0);
 
   // lum = vec3(0);
   // vec3 light0DiscLum = sunWithBloom(rayDir, uAtmosphereLightDirection[0]);
@@ -192,8 +267,9 @@ void main() {
   vec3 outColor;
   // lum *= 10.0;
   // outColor = jodieReinhardTonemap(lum);
-  outColor = ColorLookupTable(lum);
-  outColor = pow(outColor, vec3(1.0/2.2));
+  // outColor = ColorLookupTable(lum);
+  // outColor = pow(outColor, vec3(1.0/2.2));
 
-  gl_FragColor = vec4(outColor, 1);
+  // gl_FragColor = vec4(outColor, 1);
+  gl_FragColor = vec4(lum, 1);
 }

@@ -13,8 +13,13 @@
 <body>
   <script type="module">
     import SkyAtmosphere from './SkyAtmosphere.js';
+    import Camera from './Camera.js';
+    import CameraController from './CameraController.js';
 
-    const gl = ToyGL.createContext();
+    const gl = ToyGL.createContext({
+      // requireWebgl2: 1
+    });
+    window.gl = gl;
     document.body.appendChild(gl.canvas);
 
     const ndcQuadVAO = ToyGL.createVAO(gl, {
@@ -37,82 +42,175 @@
     window.skyAtmosphere = skyAtmosphere;
 
     const canvas = gl.canvas;
-    const { Cartesian2, Cartesian3, Cartesian4, Matrix4 } = ToyGL;
+    const { Cartesian2, Cartesian3, Cartesian4, Matrix3, Matrix4 } = ToyGL;
+
+    function createPlane(width, height, n, m) {
+      const dx = width / n;
+      const dy = height / m;
+      const position = [];
+      const uv = [];
+      for (let y = 0; y <= height; y += dy) {
+        for (let x = 0; x <= width; x += dx) {
+          position.push(x, y);
+          uv.push(x / width, y / height);
+        }
+      }
+
+      const index = [];
+      for (let j = 0; j < m; j++) {
+        for (let i = 0; i < n; i++) {
+          const i00 = j * (n+1) + i;
+          const i10 = i00 + 1;
+          const i01 = i00 + (n+1);
+          const i11 = i01 + 1;
+
+          index.push(
+            i00, i10, i01,
+            i10, i11, i01,
+          );
+        }
+      }
+
+      return {
+        position,
+        uv,
+        index: new Uint32Array(index),
+      };
+    }
+
+    const plane = createPlane(0.05, 0.05, 1024*2, 1026*2);
+    const planeVAO = ToyGL.createVAO(gl, {
+      attributes: {
+        aPosition: {
+          location: 0,
+          size: 2,
+          data: plane.position,
+        },
+        aUv: {
+          location: 1,
+          size: 2,
+          data: plane.uv,
+        },
+      },
+      indices: plane.index,
+    });
+
+    const depthTexture = ToyGL.createTexture(gl, {
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      format: gl.DEPTH_COMPONENT,
+      type: gl.UNSIGNED_INT,
+      internalFormat: gl.DEPTH_COMPONENT,
+    });
+    const colorTexture = ToyGL.createTexture(gl, {
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+      format: gl.RGBA,
+      type: gl.UNSIGNED_BYTE,
+      internalFormat: gl.RGBA,
+    });
+    const framebuffer = ToyGL.createFramebuffer(gl, {
+      colorTexture: colorTexture,
+      depthTexture: depthTexture,
+    });
 
     const NormalizedQuadVert = await fetch('./NormalizedQuad.vert').then(r => r.text());
+    const TerrainVert = await fetch('./Terrain.vert').then(r => r.text());
+    const TerrainFrag = await fetch('./Terrain.frag').then(r => r.text());
+    const LogDepthVert = await fetch('./LogDepth.vert').then(r => r.text());
+    const LogDepthFrag = await fetch('./LogDepth.frag').then(r => r.text());
 
-    const fovy = 40 / 180 * Math.PI;
-    const aspect = canvas.clientWidth / canvas.clientHeight;
-    const near = 0.1;
-    const far = 1e3;
-    const projectionMatrix = Matrix4.computePerspectiveFieldOfView(fovy, aspect, near, far, new Matrix4());
+    const camera = new Camera({
+      fovY: 40 / 180 * Math.PI,
+      aspectRatio: canvas.clientWidth / canvas.clientHeight,
+      near: 0.1,
+      far: 1e9,
+    });
+    camera.position = new Cartesian3(0, 0, skyAtmosphere.groundRadiusMM*1e6 + (1e3));
+    camera.direction = new Cartesian3(-1, 0, -0).normalize();
+    camera.up = Cartesian3.normalize(camera.position, new Cartesian3());
 
-    const eyePos = new Cartesian3(0, 0, skyAtmosphere.groundRadiusMM + (1 * 1e-3));
-    const eyeDir = new Cartesian3(0, 1, 0).normalize();
-    const eyeUp = Cartesian3.normalize(eyePos, new Cartesian3());
-    // const eyeUp = new Cartesian3(0, 0, 1);
-    const eyeRight = Cartesian3.cross(eyeDir, eyeUp, new Cartesian3());
-    // const eyeRight = new Cartesian3(0, 0, 1);
-    // Cartesian3.cross(eyeRight, eyeDir, eyeUp);
-    const viewMatrix = Matrix4.computeView(eyePos, eyeDir, eyeUp, eyeRight, new Matrix4());
-
-    const viewProjectionMatrix = Matrix4.multiply(projectionMatrix, viewMatrix, new Matrix4());
-    const invViewProjectionMatrix = Matrix4.inverse(viewProjectionMatrix, new Matrix4());
+    const cameraController = new CameraController(canvas, camera);
 
     const param = {
-      eyeDir: eyeDir,
       longitude: {
         x: 0,
         y: 1,
       },
-      height: (eyePos.z - skyAtmosphere.groundRadiusMM) * 1e3,
+      height: Cartesian3.magnitude(camera.position) - skyAtmosphere.groundRadiusMM*1e6,
     };
     const pane = new Tweakpane.Pane();
     pane
-      .addInput(param, 'longitude', {
-        picker: 'inline',
-        expanded: true,
-        x: {
-          min: -1,
-          max: 1,
-        },
-        y: {
-          min: -1,
-          max: 1,
-        },
-      })
-      .on('change', () => {
-        Cartesian2.normalize(param.longitude, param.longitude);
-        eyeDir.x = param.longitude.x;
-        eyeDir.y = param.longitude.y;
-        eyeDir.normalize();
-      });
-    pane
       .addInput(param, 'height', {
         min: 0.001,
-        max: 200,
+        max: 20000e3,
       })
       .on('change', () => {
-        eyePos.z = skyAtmosphere.groundRadiusMM + param.height * 1e-3;
+        const viewHeight = skyAtmosphere.groundRadiusMM*1e6 + param.height;
+        Cartesian3.normalize(camera.position, camera.position);
+        Cartesian3.multiplyByScalar(camera.position, viewHeight, camera.position);
       });
 
-
+    let ctrlKeyDown = false;
+    let shiftKeyDown = false;
+    window.addEventListener('keydown', e => {
+      ctrlKeyDown = e.ctrlKey;
+      shiftKeyDown = e.shiftKey;
+    });
+    window.addEventListener('keyup', e => {
+      ctrlKeyDown = e.ctrlKey;
+      shiftKeyDown = e.shiftKey;
+    });
     canvas.addEventListener('mousemove', e => {
-      const x = (e.x/canvas.clientWidth) * 2 - 1;
-      const y = (1 - e.y/canvas.clientHeight) * 2 - 1;
-      const ndc = new Cartesian4(x, y, 0.1, 1);
-      const worldPos = Matrix4.multiplyByVector(invViewProjectionMatrix, ndc, new Cartesian4());
+      if (!ctrlKeyDown) return;
+
+      const x = (e.x/canvas.clientWidth);
+      const y = (1 - e.y/canvas.clientHeight);
+      const longitude = Math.PI * 2.0 * x;
+      const latitude = Math.PI * 0.5 * (y * 2 - 1);
+
+      const direction = new Cartesian3();
+      const sinLatitude = Math.sin(latitude);
+      const cosLatitude = Math.cos(latitude);
+      direction.z = sinLatitude;
+      direction.x = Math.cos(longitude) * cosLatitude;
+      direction.y = Math.sin(longitude) * cosLatitude;
+
+      const ndc = new Cartesian4(x*2-1, y*2-1, 0, 1);
+      const worldPos = Matrix4.multiplyByVector(camera.inverseViewProjectionMatrix, ndc, new Cartesian4());
       Cartesian4.divideByScalar(worldPos, worldPos.w, worldPos);
+      // // const viewHeight = Cartesian3.magnitude(camera.position);
+      // // const viewPos = new Cartesian3(0, 0, viewHeight);
       const worldDir = Cartesian3
-        .subtract(worldPos, eyePos, new Cartesian3())
+        .subtract(worldPos, camera.position, new Cartesian3())
         .normalize();
 
-      Cartesian3.clone(worldDir, skyAtmosphere.atmosphereLightDirection0);
-      // dir.z = -dir.z;
-      Cartesian3.negate(worldDir, skyAtmosphere.atmosphereLightDirection1);
+      let lightDirection;
+      if (shiftKeyDown) {
+        lightDirection = skyAtmosphere.atmosphereLightDirection1;
+      } else {
+        lightDirection = skyAtmosphere.atmosphereLightDirection0;
+      }
+
+      Cartesian3.clone(worldDir, lightDirection);
+      // direction.clone(lightDirection);
+      lightDirection.z = direction.z;
+      lightDirection.normalize();
+
+
+      // Cartesian3.negate(worldDir, skyAtmosphere.atmosphereLightDirection1);
       // Cartesian3.clone(skyAtmosphere.atmosphereLightDirection0, skyAtmosphere.atmosphereLightDirection1);
       // skyAtmosphere.atmosphereLightDirection1.z = -skyAtmosphere.atmosphereLightDirection1.z;
       // skyAtmosphere.atmosphereLightDirection1.x = skyAtmosphere.atmosphereLightDirection1.x + 0.1;
+      // skyAtmosphere.atmosphereLightDirection1.normalize();
+
+      // lightDirection.z = y;
+      // lightDirection.normalize();
+
+      // skyAtmosphere.atmosphereLightDirection0.z = y;
+      // skyAtmosphere.atmosphereLightDirection0.normalize();
+
+      // skyAtmosphere.atmosphereLightDirection1.z = -y;
       // skyAtmosphere.atmosphereLightDirection1.normalize();
 
     });
@@ -121,33 +219,143 @@
     function render(ms) {
       requestAnimationFrame(render);
 
+      const seconds = ms / 1000.0;
+
       // Update Scene
-      Cartesian3.cross(eyeDir, eyeUp, eyeRight);
-      Matrix4.computeView(eyePos, eyeDir, eyeUp, eyeRight, viewMatrix);
-      Matrix4.multiply(projectionMatrix, viewMatrix, viewProjectionMatrix);
-      Matrix4.inverse(viewProjectionMatrix, invViewProjectionMatrix);
+      // Cartesian3.cross(eyeDir, eyeUp, eyeRight);
+      // Matrix4.computeView(eyePos, eyeDir, eyeUp, eyeRight, viewMatrix);
+      // Matrix4.multiply(projectionMatrix, viewMatrix, viewProjectionMatrix);
+      // Matrix4.inverse(viewProjectionMatrix, invViewProjectionMatrix);
+      cameraController.update(seconds);
 
       // Update SkyAtmosphere
-      eyePos.clone(skyAtmosphere._viewPosition);
-      eyeDir.clone(skyAtmosphere._viewDirection);
+      skyAtmosphere._viewPosition.z = Cartesian3.magnitude(camera.position) * 1e-6;
+      camera.position.clone(skyAtmosphere._cameraPosition);
+      camera.direction.clone(skyAtmosphere._cameraDirection);
       // eyeUp.clone(skyAtmosphere._viewUp);
-      eyeRight.clone(skyAtmosphere._viewRight);
-      viewMatrix.clone(skyAtmosphere._viewMatrix);
-      projectionMatrix.clone(skyAtmosphere._projectionMatrix);
-      invViewProjectionMatrix.clone(skyAtmosphere._invViewProjectionMatrix);
+      camera.right.clone(skyAtmosphere._cameraRight);
+      // camera.viewMatrix.clone(skyAtmosphere._viewMatrix);
+      // camera.projectionMatrix.clone(skyAtmosphere._projectionMatrix);
+
+      const topLeft = new Cartesian4(-1, 1, 0.1, 1);
+      const topRight = new Cartesian4(1, 1, 0.1, 1);
+      const bottomLeft = new Cartesian4(-1, -1, 0.1, 1);
+      const bottomRight = new Cartesian4(1, -1, 0.1, 1);
+      {
+        [topLeft, topRight, bottomLeft, bottomRight].forEach(ndc => {
+          Matrix4.multiplyByVector(camera.inverseViewProjectionMatrix, ndc, ndc);
+          Cartesian4.divideByScalar(ndc, ndc.w, ndc);
+          Cartesian3.subtract(ndc, camera.position, ndc);
+          Cartesian3.normalize(ndc, ndc);
+        });
+
+        Cartesian3.clone(topLeft, skyAtmosphere._topLeft);
+        Cartesian3.clone(topRight, skyAtmosphere._topRight);
+        Cartesian3.clone(bottomLeft, skyAtmosphere._bottomLeft);
+        Cartesian3.clone(bottomRight, skyAtmosphere._bottomRight);
+      }
+
+      camera.inverseViewProjectionMatrix.clone(skyAtmosphere._invViewProjectionMatrix);
+
+
+      const viewport = new Cartesian4(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+      // Render G buffer
+      ToyGL.setState(gl, {
+        viewport: [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight],
+        cull: {
+          enable: true,
+        },
+        depthTest: {
+          enable: true,
+          write: true,
+        },
+      });
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: framebuffer,
+      });
+      ToyGL.draw(gl, {
+        vs: `
+          ${LogDepthVert}
+          ${TerrainVert}
+        `,
+        fs: `
+          ${LogDepthFrag}
+          ${TerrainFrag}
+        `,
+        vao: planeVAO,
+        attributeLocations: {
+          aPosition: 0,
+          aUv: 1,
+        },
+        uniforms: {
+          uView: camera.viewMatrix,
+          uProjection: camera.projectionMatrix,
+          uGroundRadiusMM: skyAtmosphere.groundRadiusMM,
+          uHeightMap: './heightmap0.png',
+          uGroundDiffuseMap: './ground.jpeg',
+
+          uAtmosphereLightDirection0: skyAtmosphere.atmosphereLightDirection0,
+          uAtmosphereLightDirection1: skyAtmosphere.atmosphereLightDirection1,
+          uAtmosphereLightColor0: skyAtmosphere.atmosphereLightColor0,
+          uAtmosphereLightColor1: skyAtmosphere.atmosphereLightColor1,
+
+          uOneOverLog2FarPlusOne: function() {
+            return 1.0 / Math.log2(camera._far + 1.0);
+          },
+        },
+        count: plane.index.length,
+        fb: framebuffer,
+      });
 
       // Renderer
+      ToyGL.setState(gl, {
+        cull: {
+          enable: false,
+        },
+        depthTest: {
+          enable: false,
+        },
+      });
+      ToyGL.clear(gl, {
+        color: [0, 0, 0, 1],
+        depth: 1,
+        fb: null,
+      });
       skyAtmosphere.renderSkyAtmosphereLookUpTables();
+
+      skyAtmosphere._depthTexture = depthTexture;
+      skyAtmosphere._sceneColorTexture = colorTexture;
+      skyAtmosphere._starField.update({
+        far: camera._far,
+        // temeToPseudoFixed: Matrix3.fromRotationX(90 / 180 * Math.PI),//Matrix3.IDENTITY,
+        viewRotation: Matrix4.getMatrix3(camera.viewMatrix, new Matrix3()),
+        projectionMatrix: camera.projectionMatrix,
+        viewport: viewport,
+      });
       skyAtmosphere.renderSkyAtmosphere({
         framebuffer: null,
-        viewport: new Cartesian4(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight),
+        viewport: viewport,
       });
+      // skyAtmosphere._starField.update({
+      //   viewRotation: Matrix4.getMatrix3(skyAtmosphere._viewMatrix, new Matrix3()),
+      //   projectionMatrix: skyAtmosphere._projectionMatrix,
+      //   viewport: new Cartesian4(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight),
+      // });
+
       // return;
 
       // blitTextureToCanvas(skyAtmosphere._transmittanceLutTexture);
       // blitTextureToCanvas(skyAtmosphere._multiScatteredLuminanceLutTexture);
+      // blitTextureToCanvas(skyAtmosphere._distantSkyLightLutTexture);
       // blitTextureToCanvas(skyAtmosphere._skyViewLutTexture);
-      return;
+      // blitTextureToCanvas(skyAtmosphere._skyAtmosphereLuminanceTexture);
+      // blitTextureToCanvas(skyAtmosphere._downsampleInputTexture);
+      // blitTextureToCanvas(skyAtmosphere._bloomDownsampleChain.textures[5]);
+      // blitTextureToCanvas(skyAtmosphere._bloomTexture);
+      // blitTextureToCanvas(skyAtmosphere._starField.starFieldTexture);
     }
 
     requestAnimationFrame(render);
@@ -160,6 +368,10 @@
         cull: {
           enable: false,
         },
+        depthTest: {
+          enable: false,
+          write: false,
+        },
       });
       ToyGL.draw(gl, {
         vs: NormalizedQuadVert,
@@ -168,8 +380,10 @@
           uniform sampler2D uTexture;
           varying vec2 uv;
           void main() {
-            gl_FragColor = texture2D(uTexture, vec2(uv.x, 1.-uv.y));
+            // gl_FragColor = texture2D(uTexture, vec2(uv.x, 1.-uv.y));
+            gl_FragColor = texture2D(uTexture, uv);
             // gl_FragColor = vec4(uv, 0, 1);
+            gl_FragColor.a = 1.0;
           }
         `,
         attributeLocations: {
@@ -183,6 +397,38 @@
         fb: null,
       });
     }
+
+    // let ctrlPressed = false;
+    // let pointerLocker = false;
+    // document.addEventListener('pointerlockchange', e => {
+    //   pointerLocker = document.pointerLockElement === canvas;
+    // });
+    // document.addEventListener('pointerlockerror', e => {
+    //   // alert('Failed to request pointer lock, please try again later.');
+    //   canvas.requestPointerLock();
+    // });
+    // canvas.addEventListener('click', () => {
+    //   canvas.requestPointerLock();
+    //   // canvas.requestFullscreen();
+    // });
+    // window.addEventListener('keydown', e => {
+    //   ctrlPressed = e.ctrlKey && true;
+    //   document.exitPointerLock();
+    // });
+    // window.addEventListener('keyup', e => {
+    //   ctrlPressed = e.ctrlKey && false;
+    //   canvas.requestPointerLock();
+    // });
+    // canvas.addEventListener('mousemove', e => {
+    //   if (pointerLocker) {
+    //     // Update eye direction
+    //     eyeDir.x += e.movementX / window.innerWidth;
+    //     eyeDir.y += -e.movementY / window.innerHeight;
+    //     Cartesian3.normalize(eyeDir, eyeDir);
+    //   } else if (!ctrlPressed) {
+    //     return false;
+    //   }
+    // });
   </script>
 </body>
 </html>

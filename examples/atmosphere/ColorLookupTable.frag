@@ -57,7 +57,7 @@ vec4 UnwrappedTexture3DSample( sampler2D Texture, vec3 UVW, float Size ) {
   // return lerp(RG0, RG1, FracW);
 }
 
-vec3 ColorLookupTable (vec3 LinearColor) {
+vec3 ColorLookupTable(vec3 LinearColor) {
   vec3 LUTEncodedColor;
 
     LUTEncodedColor = LinToLog( LinearColor + LogToLin( 0. ) );

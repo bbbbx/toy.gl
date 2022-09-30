@@ -2,9 +2,15 @@ uniform vec4 uTransmittanceLutSizeAndInvSize;
 uniform vec4 uMultiScatteredLuminanceLutSizeAndInvSize;
 uniform vec4 uSkyViewLutSizeAndInvSize;
 
+uniform sampler2D uTransmittanceLutTexture;
+uniform sampler2D uMultiScatteredLuminanceLutTexture;
+uniform sampler2D uDistantSkyLightLutTexture;
+uniform sampler2D uSkyViewLutTexture;
+
 uniform float uGroundRadiusMM;
 uniform float uAtmosphereRadiusMM;
 // uniform float uStepCount;
+uniform vec3 uViewPos;
 
 // View. related
 uniform float uAtmosphereLightDiscCosHalfApexAngle[2];
@@ -16,7 +22,7 @@ uniform mat3 uSkyViewLutReferential;
 
 
 #ifndef SECOND_ATMOSPHERE_LIGHT_ENABLED
-#define SECOND_ATMOSPHERE_LIGHT_ENABLED 0
+#define SECOND_ATMOSPHERE_LIGHT_ENABLED 1
 #endif
 
 #define PI 3.141592653589793
@@ -40,7 +46,6 @@ float rayIntersectSphere(vec3 ro, vec3 rd, float rad) {
   return -b - sqrt(discr);
 }
 
-
 float getMiePhase(float cosTheta) {
   const float g = 0.8;
   const float scale = 3.0/(8.0*PI);
@@ -53,67 +58,83 @@ float getMiePhase(float cosTheta) {
 
 float getRayleighPhase(float cosTheta) {
   const float k = 3.0/(16.0*PI);
+  // const float k = 3./4.;
   return k*(1.0+cosTheta*cosTheta);
 }
 
-// 见 2.1
-// 见 4.Atmospheric model, Table 1
-// These are per megameter.
-// 我们假设：
-//   1. 瑞丽理论中只有散射，没有吸收，相位函数是 pr(theta)
-//   2. 米氏理论有散射和吸收，相位函数是 pm(theta, g)
-//   3. 臭氧不散射，只吸收
-// 瑞利散射光线的强度与入射光线波长的四次方成反比，
-// 而米式散射的程度跟波长是无关的，而且光子散射后的性质也不会改变。
-const vec3 rayleighScatteringBase = vec3(5.802, 13.558, 33.1); // 10^-6/m for lambda=(680,550,440)nm
-const vec3 rayleighAbsorptionBase = vec3(0.0);
-const vec3 mieScatteringBase = vec3(3.996);
-const vec3 mieAbsorptionBase = vec3(4.40);
-const vec3 ozoneAbsorptionBase = vec3(0.650, 1.881, 0.085);
+const vec3 EarthRayleighScatteringBase = vec3(5.802, 13.558, 33.1); // 10^-6/m for lambda=(680,550,440)nm
+// beta: 8 * Math.PI**3 * (n**2-1)**2 / (3 * N * lambda**4), unit(1/m)
+//   lambda = 680 * 1e-9;
+//   sea level air density = 1.293kg/L
+//   N_A = 6.02 * 1e23
+//   N2 = 28
+//   O2 = 32
+//   average = 31
+//   N(molercular number density, 1/m^3) = (1.293kg / 0.012kg) * (12/31) * N_A = 2.51*1e25;
+// 
+//   n = 1.00029;
+// const vec3 EarthRayleighScatteringBase = vec3(6.2862880515770465, 14.688558265154152, 35.86073795203651);
+const vec3 EarthRayleighAbsorptionBase = vec3(0.0);
+const vec3 EarthMieScatteringBase = vec3(3.996);
+const vec3 EarthMieAbsorptionBase = vec3(4.40);
+const vec3 EarthOzoneScatteringBase = vec3(0.0);
+const vec3 EarthOzoneAbsorptionBase = vec3(0.650, 1.881, 0.085);
 
-/**
- * eyePos: MM 单位
- */
-void getScatteringValues(vec3 eyePos,
-  out vec3 rayleighScattering,
-  out vec3 mieScattering,
-  out vec3 extinction
-) {
-  float altitudeKM = (length(eyePos) - uGroundRadiusMM) * 1000.0;
+// 把大气的参与介质建模为 (瑞利粒子+米氏粒子+其他粒子)
+// Atmopshere Particulate Medium = (rayleigh particle, mie particle, other particle)
+struct MediumSampleRGB {
+  // 瑞利粒子，例如地球上的空气分子
+  vec3 scatteringRayleigh;
+  vec3 absorptionRayleigh;
+  vec3 extinctionRayleigh;
 
-  // Note: Paper gets these switched up.
-  float rayleighDensity = exp(-altitudeKM/8.0); // H_R=8.0KM
-  float mieDensity = exp(-altitudeKM/1.2);      // H_M=1.2KM
+  // 米氏粒子，例如地球上的气溶胶
+  // aerosols
+  vec3 scatteringMie;
+  vec3 absorptionMie;
+  vec3 extinctionMie;
 
-  rayleighScattering = rayleighScatteringBase * rayleighDensity;
-  vec3 rayleighAbsorption = rayleighAbsorptionBase * rayleighDensity;
+  // 其他粒子，例如地球上的臭氧
+  vec3 scatteringOther;
+  vec3 absorptionOther;
+  vec3 extinctionOther;
 
-  mieScattering = mieScatteringBase * mieDensity;
-  vec3 mieAbsorption = mieAbsorptionBase * mieDensity;
+  // 所有的粒子
+  vec3 scattering;
+  vec3 absorption;
+  vec3 extinction;
 
-  vec3 ozoneAbsorption = max(0.0, 1. - abs(altitudeKM - 25.)/15.) * ozoneAbsorptionBase;
+  // scattering/extinction
+  vec3 albedo;
+};
+MediumSampleRGB SampleMediumRGB(vec3 worldPosMM) {
+  float altitudeKM = (length(worldPosMM) - uGroundRadiusMM) * 1e3;
 
-  extinction =
-    rayleighScattering + rayleighAbsorption +
-    mieScattering + mieAbsorption +
-    ozoneAbsorption;
+  float rayleighDensity = exp(-altitudeKM / 8.0);
+  float mieDensity = exp(-altitudeKM / 1.2);
+  float otherDensity = max(0.0, 1. - abs(altitudeKM - 25.)/15.);
+
+  MediumSampleRGB s;
+  s.scatteringRayleigh = rayleighDensity * EarthRayleighScatteringBase;
+  s.absorptionRayleigh = rayleighDensity * EarthRayleighAbsorptionBase;
+  s.extinctionRayleigh = s.scatteringRayleigh + s.absorptionRayleigh;
+
+  s.scatteringMie = mieDensity * EarthMieScatteringBase;
+  s.absorptionMie = mieDensity * EarthMieAbsorptionBase;
+  s.extinctionMie = s.scatteringMie + s.absorptionMie;
+
+  s.scatteringOther = otherDensity * EarthOzoneScatteringBase;
+  s.absorptionOther = otherDensity * EarthOzoneAbsorptionBase;
+  s.extinctionOther = s.scatteringOther + s.absorptionOther;
+
+  s.scattering = s.scatteringRayleigh + s.scatteringMie + s.scatteringOther;
+  s.absorption = s.absorptionRayleigh + s.absorptionMie + s.absorptionOther;
+  s.extinction = s.extinctionRayleigh + s.extinctionMie + s.extinctionOther;
+
+  s.albedo = s.scattering / max(vec3(0.001), s.extinction);
+
+  return s;
 }
-
-vec3 getValFromTLUT(sampler2D LUT, vec3 eyePos, vec3 lightDir) {
-  float radius = length(eyePos);
-  vec3 up = eyePos / radius;
-  float lightCosZenithAngle = dot(lightDir, up);
-
-  float u = lightCosZenithAngle * 0.5 + 0.5;
-  // eye 可能在大气外
-  float v = max(0.0, min(1.0, (radius-uGroundRadiusMM) / (uAtmosphereRadiusMM-uGroundRadiusMM)));
-  return texture2D(LUT, vec2(u, v)).rgb;
-}
-
-vec3 getValFromMultiScattLUT(sampler2D LUT, vec3 eyePos, vec3 lightDir) {
-  return getValFromTLUT(LUT, eyePos, lightDir);
-}
-
 
 
 // SkyViewLUT 的参数是视角方向，传 viewHeight 是为了确定地平线对应的角度，
@@ -181,4 +202,148 @@ void SkyViewLutParamsToUv(in vec3 viewDir, in float viewHeight, out vec2 uv) {
 
   // nagate xy for starting at positive x axsi, instead of  nagative x axis
   uv.x = (atan(-viewDir.y, -viewDir.x) + PI) / (2.0*PI);
+}
+
+
+// void getTransmittanceLutUvs(
+//   in float viewHeight, in float viewZenithCosAngle, in float BottomRadius, in float TopRadius,
+//   out vec2 UV)
+// {
+//   float H = sqrt(max(0.0, TopRadius * TopRadius - BottomRadius * BottomRadius));
+//   float Rho = sqrt(max(0.0, viewHeight * viewHeight - BottomRadius * BottomRadius));
+
+//   float Discriminant = viewHeight * viewHeight * (viewZenithCosAngle * viewZenithCosAngle - 1.0) + TopRadius * TopRadius;
+//   float D = max(0.0, (-viewHeight * viewZenithCosAngle + sqrt(Discriminant))); // Distance to atmosphere boundary
+
+//   float Dmin = TopRadius - viewHeight;
+//   float Dmax = Rho + H;
+//   float Xmu = (D - Dmin) / (Dmax - Dmin);
+//   float Xr = Rho / H;
+
+//   UV = vec2(Xmu, Xr);
+//   //UV = float2(fromUnitToSubUvs(UV.x, TRANSMITTANCE_TEXTURE_WIDTH), fromUnitToSubUvs(UV.y, TRANSMITTANCE_TEXTURE_HEIGHT)); // No real impact so off
+// }
+// void LutTransmittanceParamsToUv(in float cosZenith, in float heightMM, out vec2 uv) {
+//   getTransmittanceLutUvs(heightMM, cosZenith, uGroundRadiusMM, uAtmosphereRadiusMM, uv);
+// }
+
+vec3 getTransmittance(float cosZenith, float heightMM) {
+  // vec2 uv;
+  // LutTransmittanceParamsToUv(cosZenith, heightMM, uv);
+  vec2 uv = vec2(
+    clamp(cosZenith * 0.5 + 0.5, 0.0, 1.0),
+    (heightMM - uGroundRadiusMM) / (uAtmosphereRadiusMM-uGroundRadiusMM)
+  );
+  return texture2D(uTransmittanceLutTexture, uv).rgb;
+}
+
+vec3 getMultipleScattering(vec3 pos, float cosZenith) {
+  vec2 uv = vec2(
+    clamp(cosZenith * 0.5 + 0.5, 0., 1.),
+    clamp((length(pos) - uGroundRadiusMM) / (uAtmosphereRadiusMM-uGroundRadiusMM), 0., 1.)
+  );
+  return texture2D(uMultiScatteredLuminanceLutTexture, uv).rgb;
+}
+
+#ifndef RAY_MARCHING_SAMPLE_COUNT
+#define RAY_MARCHING_SAMPLE_COUNT 32
+#endif
+vec3 raymarchScattering(
+  vec3 pos,
+  vec3 rayDir,
+  vec3 light0Dir,
+  vec3 light1Dir,
+  vec3 light0Illuminance,
+  vec3 light1Illuminance
+) {
+  float tBottom = rayIntersectSphere(pos, rayDir, uGroundRadiusMM);
+  float tTop = rayIntersectSphere(pos, rayDir, uAtmosphereRadiusMM);
+  float tMax = 0.0;
+  if (tBottom < 0.0) {
+    if (tTop < 0.0) { // intersect with nothing
+      tMax = 0.0;
+      return vec3(0);
+    } else {
+      tMax = tTop;
+    }
+  } else {
+    if (tTop > 0.0) {
+      tMax = min(tTop, tBottom);
+    }
+  }
+  tMax = min(9000000.0, tMax);
+  // return vec3(tMax);
+
+  float cosTheta = dot(rayDir, light0Dir);
+  // negate cosTheta because due to rayDir being a "in" direction. 
+  float miePhaseValue0 = getMiePhase(-cosTheta);
+  float rayleighPhaseValue0 = getRayleighPhase(cosTheta);
+#if SECOND_ATMOSPHERE_LIGHT_ENABLED
+  cosTheta = dot(rayDir, light1Dir);
+  float miePhaseValue1 = getMiePhase(-cosTheta);
+  float rayleighPhaseValue1 = getRayleighPhase(cosTheta);
+#endif
+
+  vec3 exposedLight0Illuminance = light0Illuminance * 1.0;// ViewPreExposure;
+#if SECOND_ATMOSPHERE_LIGHT_ENABLED
+  vec3 exposedLight1Illuminance = light1Illuminance * 1.0;// ViewPreExposure;
+#endif
+
+  // L
+  vec3 L = vec3(0.0);
+  // Throughput
+  vec3 transmittance = vec3(1.0);
+  float t = 0.0;
+  for (int i = 0; i < RAY_MARCHING_SAMPLE_COUNT; i++) {
+    float newT = ((float(i) + 0.3)/float(RAY_MARCHING_SAMPLE_COUNT))*tMax;
+    float dt = newT - t;
+    t = newT;
+
+    vec3 newPos = pos + t * rayDir;
+    float pHeight = length(newPos);
+    vec3 upVector = newPos / pHeight;
+
+    MediumSampleRGB medium = SampleMediumRGB(newPos);
+    vec3 sampleTransmittance = exp(-dt * medium.extinction /* * AerialPespectiveViewDistanceScale */);
+
+    // vec3 lightDir = uAtmosphereLightDirection[0];
+    // Phase and transmittance for light 0
+    float light0ZenithCosAngle = dot(light0Dir, upVector);
+    vec3 transmittanceToLight0 = getTransmittance(light0ZenithCosAngle, pHeight);
+    vec3 phaseTimesScattering0 = medium.scatteringMie * miePhaseValue0 + medium.scatteringRayleigh * rayleighPhaseValue0;
+
+#if SECOND_ATMOSPHERE_LIGHT_ENABLED
+    // Phase and transmittance for light 1
+    float light1ZenithCosAngle = dot(light1Dir, upVector);
+    vec3 transmittanceToLight1 = getTransmittance(light1ZenithCosAngle, pHeight);
+    vec3 phaseTimesScattering1 = medium.scatteringMie * miePhaseValue1 + medium.scatteringRayleigh * rayleighPhaseValue1;
+#endif
+
+    // Multiple scattering approximation
+    vec3 multiScatteredLuminance0 = getMultipleScattering(newPos, light0ZenithCosAngle);
+
+    float tPlanet0 = rayIntersectSphere(newPos, light0Dir, uGroundRadiusMM);
+    float planetShadow0 = mix(1.0, 0.0, float(tPlanet0 >= 0.));
+    // MultiScatteredLuminance is already pre-exposed, atmospheric light contribution needs to be pre exposed
+    vec3 S = exposedLight0Illuminance *
+      (planetShadow0 * transmittanceToLight0 * phaseTimesScattering0 + multiScatteredLuminance0 * medium.scattering);
+
+#if SECOND_ATMOSPHERE_LIGHT_ENABLED
+    float tPlanet1 = rayIntersectSphere(newPos, light1Dir, uGroundRadiusMM);
+    float planetShadow1 = mix(1.0, 0.0, float(tPlanet1 >= 0.));
+    //  Multi-scattering can work for the second light but it is disabled for the sake of performance.
+    S += (planetShadow1 * transmittanceToLight1 * phaseTimesScattering1) * exposedLight1Illuminance;
+#endif
+
+#if 0
+    L += transmittance * S * dt;
+#else
+    // See slide 28 at http://www.frostbite.com/2015/08/physically-based-unified-volumetric-rendering-in-frostbite/ 
+    vec3 Sint = (S - S * sampleTransmittance) / medium.extinction;
+    L += transmittance * Sint;
+#endif
+    transmittance *= sampleTransmittance;
+  }
+
+  return L;
 }

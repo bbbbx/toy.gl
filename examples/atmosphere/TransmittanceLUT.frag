@@ -18,11 +18,9 @@ vec3 GetTransmittance(vec3 eyePos, vec3 lightDir) {
 
     vec3 newPos = eyePos + t*lightDir;
 
-    vec3 rayleighScattering, mieScattering, extinction;
+    MediumSampleRGB medium = SampleMediumRGB(newPos);
 
-    getScatteringValues(newPos, rayleighScattering, mieScattering, extinction);
-
-    transmittance *= exp(- dt*extinction);
+    transmittance *= exp(- dt * medium.extinction);
   }
 
   return transmittance;
@@ -37,11 +35,9 @@ void main() {
 
   float lightCosTheta = u*2. - 1.;
   float lightTheta = safeAcos(lightCosTheta);
-  float radius = mix(uGroundRadiusMM, uAtmosphereRadiusMM, v);
+  float viewHeight = mix(uGroundRadiusMM, uAtmosphereRadiusMM, v);
 
-  // vec3 eyePos = vec3(0, radius, 0);
-  // vec3 lightDir = normalize( vec3(0, lightCosTheta, sin(lightTheta)) );
-  vec3 eyePos = vec3(0, 0, radius);
+  vec3 eyePos = vec3(0, 0, viewHeight);
   vec3 lightDir = normalize( vec3(0, sin(lightTheta), lightCosTheta) );
 
   vec4 outColor0;

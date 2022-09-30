@@ -1,9 +1,7 @@
-// multiple-scattering LUT. Each pixel coordinate corresponds to a height and sun zenith angle, and
-// the value is the multiple scattering approximation (Psi_ms from the paper, Eq. 10).
-const float mulScattSteps = 20.0;
-const int sqrtSamples = 8;
+const float MultiScatterSteps = 20.0;
+const int SqrtSampleCount = 8;
+const float InvSampleCount = 1.0 / float(SqrtSampleCount * SqrtSampleCount);
 
-uniform sampler2D uTransmittance;
 uniform vec4 uUniformSphereSamplesBuffer[64];
 
 // Y-up, start at z axis
@@ -24,15 +22,14 @@ void getMulScattValues(vec3 pos, vec3 lightDir, out vec3 lumTotal, out vec3 f_ms
   lumTotal = vec3(0.0);
   f_ms = vec3(0.0);
 
-  float invSamples = 1.0/float(sqrtSamples*sqrtSamples);
-  for (int i = 0; i < sqrtSamples; i++) {
-    for (int j = 0; j < sqrtSamples; j++) {
+  for (int i = 0; i < SqrtSampleCount; i++) {
+    for (int j = 0; j < SqrtSampleCount; j++) {
       // This integral is symmetric about theta = 0 (or theta = PI), so we
       // only need to integrate from zero to PI, not zero to 2*PI.
-      // float theta = PI * ((float(i) + 0.5) / float(sqrtSamples)); // [0,PI]
-      // float phi = safeAcos( 1.0 - 2.0*(float(j) + 0.5) / float(sqrtSamples) ); // [0,PI]
+      // float theta = PI * ((float(i) + 0.5) / float(SqrtSampleCount)); // [0,PI]
+      // float phi = safeAcos( 1.0 - 2.0*(float(j) + 0.5) / float(SqrtSampleCount) ); // [0,PI]
       // vec3 rayDir = getSphericalDir(theta, phi);
-      vec3 rayDir = uUniformSphereSamplesBuffer[i*sqrtSamples+j].xyz;
+      vec3 rayDir = uUniformSphereSamplesBuffer[i*SqrtSampleCount + j].xyz;
 
       float atmoDist = rayIntersectSphere(pos, rayDir, uAtmosphereRadiusMM);
       float groundDist = rayIntersectSphere(pos, rayDir, uGroundRadiusMM);
@@ -45,33 +42,35 @@ void getMulScattValues(vec3 pos, vec3 lightDir, out vec3 lumTotal, out vec3 f_ms
 
       vec3 lum = vec3(0.0), lumFactor = vec3(0.0), transmittance = vec3(1.0);
       float t = 0.0;
-      for (float stepI = 0.0; stepI < mulScattSteps; stepI += 1.0) {
-        float newT = ((stepI + 0.3)/mulScattSteps)*tMax;
+      for (float stepI = 0.0; stepI < MultiScatterSteps; stepI += 1.0) {
+        float newT = ((stepI + 0.3) / MultiScatterSteps)*tMax;
         float dt = newT - t;
         t = newT;
 
         vec3 newPos = pos + t*rayDir;
 
-        vec3 rayleighScattering, mieScattering, extinction;
-        getScatteringValues(newPos, rayleighScattering, mieScattering, extinction);
+        MediumSampleRGB medium = SampleMediumRGB(newPos);
 
-        vec3 sampleTransmittance = exp(-dt*extinction);
+        vec3 sampleTransmittance = exp(- dt * medium.extinction);
 
         // Integrate within each segment.
-        vec3 scatteringNoPhase = rayleighScattering + mieScattering;
-        vec3 scatteringF = (scatteringNoPhase - scatteringNoPhase * sampleTransmittance) / extinction;
+        vec3 scatteringNoPhase = medium.scattering;
+        vec3 scatteringF = (scatteringNoPhase - scatteringNoPhase * sampleTransmittance) / medium.extinction;
         lumFactor += transmittance * scatteringF;
 
         // This is slightly different from the paper, but I think the paper has a mistake?
         // In equation (6), I think S(x,w_s) should be S(x-tv,w_s).
-        vec3 sunTransmittance = getValFromTLUT(uTransmittance, newPos, lightDir);
+        float newPosHeight = length(newPos);
+        vec3 upVector = newPos / newPosHeight;
+        float lightZenithCosAngle = dot(lightDir, upVector);
+        vec3 sunTransmittance = getTransmittance(lightZenithCosAngle, newPosHeight);
 
-        vec3 rayleighInScattering = rayleighScattering*rayleighPhaseValue;
-        vec3 mieInScattering = mieScattering*miePhaseValue;
+        vec3 rayleighInScattering = medium.scatteringRayleigh * rayleighPhaseValue;
+        vec3 mieInScattering = medium.scatteringMie * miePhaseValue;
         vec3 inScattering = (rayleighInScattering + mieInScattering) * sunTransmittance;
 
         // Integrated scattering within path segment.
-        vec3 scatteringIntegral = (inScattering - inScattering * sampleTransmittance) / extinction;
+        vec3 scatteringIntegral = (inScattering - inScattering * sampleTransmittance) / medium.extinction;
 
         lum += scatteringIntegral * transmittance;
         transmittance *= sampleTransmittance;
@@ -81,12 +80,17 @@ void getMulScattValues(vec3 pos, vec3 lightDir, out vec3 lumTotal, out vec3 f_ms
         vec3 hitPos = pos + groundDist*rayDir;
         if (dot(hitPos, lightDir) > 0.0) {
           hitPos = normalize(hitPos) * uGroundRadiusMM;
-          lum += transmittance * groundAlbedo * getValFromTLUT(uTransmittance, hitPos, lightDir);
+          float hitPosHeight = length(hitPos);
+          vec3 upVector = hitPos / hitPosHeight;
+          float lightZenithCosAngle = dot(lightDir, upVector);
+          vec3 transmittanceFromHitPosToLight = getTransmittance(lightZenithCosAngle, hitPosHeight);
+
+          lum += transmittance * groundAlbedo * transmittanceFromHitPosToLight;
         }
       }
 
-      f_ms += lumFactor * invSamples;
-      lumTotal += lum * invSamples;
+      f_ms += lumFactor * InvSampleCount;
+      lumTotal += lum * InvSampleCount;
     }
   }
 }
