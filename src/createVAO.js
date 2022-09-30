@@ -8,14 +8,14 @@ import defined from './defined.js';
  *   attributeState: {
  *     ELEMENT_ARRAY_BUFFER: null,
  *     attributes: [
- *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, },
- *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, },
- *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, },
- *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, },
- *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, },
- *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, },
- *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, },
- *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, },
+ *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, divisor: ?, },
+ *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, divisor: ?, },
+ *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, divisor: ?, },
+ *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, divisor: ?, },
+ *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, divisor: ?, },
+ *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, divisor: ?, },
+ *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, divisor: ?, },
+ *       { enable: ?, size: ?, type: ?, normalize: ?, stride: ?, offset: ?, buffer: ?, divisor: ?, },
  *     ],
  *   },
  * </pre>
@@ -31,7 +31,8 @@ import defined from './defined.js';
  *       0, 0, 0,
  *       1, 1, 1,
  *       0, 1, 0,
- *     ]
+ *     ],
+ *     divisor: 0,
  *   }
  * }
  * </pre>
@@ -51,7 +52,7 @@ function createVAO(gl, options) {
 
   for (const attributeName in attributes) {
     if (Object.hasOwnProperty.call(attributes, attributeName)) {
-      const { location, data, size } = attributes[attributeName];
+      const { location, data, size, divisor } = attributes[attributeName];
 
       const buffer = createAttributeBuffer(gl, data, gl.STATIC_DRAW);
 
@@ -64,6 +65,9 @@ function createVAO(gl, options) {
       const stride = 0;
       const offset = 0;
       gl.vertexAttribPointer(location, size, type, normalized, stride, offset);
+      if (defined(divisor)) {
+        gl.vertexAttribDivisor(location, divisor);
+      }
     }
   }
 

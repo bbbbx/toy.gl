@@ -81,6 +81,7 @@ function getVaoKey(attributes, indices) {
  * @param {Number} [options.count=indices.length] The number of vertices.
  * @param {Number} [options.primitiveType=gl.TRIANGLES] Primitive type. <code>gl.LINES</code>, <code>gl.POINTS</code>.
  * @param {WebGLFramebuffer | null} [options.fb=null] See {@link createFramebuffer}.
+ * @param {Number} [instanceCount=0] The number of instances to draw.
  */
 function draw(gl, options) {
   const {
@@ -107,6 +108,7 @@ function draw(gl, options) {
 
   const primitiveType = defaultValue(options.primitiveType, gl.TRIANGLES);
   const uniforms = defaultValue(options.uniforms, defaultValue.EMPTY_OBJECT);
+  const instanceCount = defaultValue(options.instanceCount, 0);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
 
@@ -283,12 +285,25 @@ function draw(gl, options) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
 
     const indicesType = getIndicesType(indices);
-    gl.drawElements(primitiveType, count, indicesType, 0);
+    if (instanceCount === 0) {
+      gl.drawElements(primitiveType, count, indicesType, 0);
+    } else {
+      gl.drawElementsInstanced(primitiveType, count, indicesType, 0, instanceCount);
+    }
   } else if (hasBoundElementArrayBuffer) {
     const indicesType = hasBoundElementArrayBuffer.indicesType;
-    gl.drawElements(primitiveType, count, indicesType, 0);
+
+    if (instanceCount === 0) {
+      gl.drawElements(primitiveType, count, indicesType, 0);
+    } else {
+      gl.drawElementsInstanced(primitiveType, count, indicesType, 0, instanceCount);
+    }
   } else {
-    gl.drawArrays(primitiveType, 0, count);
+    if (instanceCount === 0) {
+      gl.drawArrays(primitiveType, 0, count);
+    } else {
+      gl.drawArraysInstanced(primitiveType, 0, count, instanceCount);
+    }
   }
 }
 
