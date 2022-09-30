@@ -42,6 +42,35 @@ function Cartesian4(x, y, z, w) {
   this.w = defaultValue(w, 0.0);
 }
 
+Object.defineProperties(Cartesian4.prototype, {
+  length: {
+    get: function() {
+      return 4;
+    },
+  },
+  0: {
+    get: function() {
+      return this.x;
+    },
+  },
+  1: {
+    get: function() {
+      return this.y;
+    },
+  },
+  2: {
+    get: function() {
+      return this.z;
+    },
+  },
+  3: {
+    get: function() {
+      return this.w;
+    },
+  },
+});
+
+
 /**
  * Duplicates a Cartesian4 instance.
  *
@@ -332,6 +361,52 @@ Cartesian4.equalsEpsilon = function (
 };
 
 /**
+ * Stores the provided instance into the provided array.
+ *
+ * @param {Cartesian4} value The value to pack.
+ * @param {Number[]} array The array to pack into.
+ * @param {Number} [startingIndex=0] The index into the array at which to start packing the elements.
+ *
+ * @returns {Number[]} The array that was packed into
+ */
+Cartesian4.pack = function (value, array, startingIndex) {
+  startingIndex = defaultValue(startingIndex, 0);
+
+  array[startingIndex++] = value.x;
+  array[startingIndex++] = value.y;
+  array[startingIndex++] = value.z;
+  array[startingIndex] = value.w;
+
+  return array;
+};
+
+/**
+ * Flattens an array of Cartesian4s into an array of components.
+ *
+ * @param {Cartesian4[]} array The array of cartesians to pack.
+ * @param {Number[]} [result] The array onto which to store the result. If this is a typed array, it must have array.length * 4 components, else a {@link DeveloperError} will be thrown. If it is a regular array, it will be resized to have (array.length * 4) elements.
+ * @returns {Number[]} The packed array.
+ */
+Cartesian4.packArray = function (array, result) {
+  const length = array.length;
+  const resultLength = length * 4;
+  if (!defined(result)) {
+    result = new Array(resultLength);
+  } else if (!Array.isArray(result) && result.length !== resultLength) {
+    throw new Error(
+      'If result is a typed array, it must have exactly array.length * 4 elements'
+    );
+  } else if (result.length !== resultLength) {
+    result.length = resultLength;
+  }
+
+  for (let i = 0; i < length; ++i) {
+    Cartesian4.pack(array[i], result, i * 4);
+  }
+  return result;
+};
+
+/**
  * Duplicates this Cartesian4 instance.
  *
  * @param {Cartesian4} [result] The object onto which to store the result.
@@ -339,6 +414,15 @@ Cartesian4.equalsEpsilon = function (
  */
 Cartesian4.prototype.clone = function (result) {
   return Cartesian4.clone(this, result);
+};
+
+/**
+ * Normalize this 4-dimensions vector.
+ *
+ * @returns {Cartesian4} this object.
+ */
+Cartesian4.prototype.normalize = function() {
+  return Cartesian4.normalize(this, this);
 };
 
 /**

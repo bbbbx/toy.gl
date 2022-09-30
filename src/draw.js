@@ -183,7 +183,8 @@ function draw(gl, options) {
     }
     
     if (Object.hasOwnProperty.call(uniforms, uniformName)) {
-      const uniform = uniforms[uniformName];
+      let uniform = uniforms[uniformName];
+      uniform = typeof uniform === 'function' ? uniform() : uniform;
       const uniformLocation = gl.getUniformLocation(program, uniformName);
 
       if (uniformLocation === null) {
@@ -267,7 +268,11 @@ function draw(gl, options) {
         gl.uniform1i(uniformLocation, currentTextureUnit);
 
         currentTextureUnit++;
+      } else {
+        console.warn(`Unknown uniform ${uniformName}, type: ${uniform}.`);
       }
+    } else {
+      console.warn(`Uniforms haven't ${uniformName} property.`);
     }
   }
 

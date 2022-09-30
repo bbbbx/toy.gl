@@ -177,4 +177,19 @@ MMath.clamp = function(value, min, max) {
   return Math.max(min, Math.min(max, value));
 };
 
+/**
+ * Computes the linear interpolation of two values.
+ *
+ * @param {Number} p The start value to interpolate.
+ * @param {Number} q The end value to interpolate.
+ * @param {Number} time The time of interpolation generally in the range <code>[0.0, 1.0]</code>.
+ * @returns {Number} The linearly interpolated value.
+ *
+ * @example
+ * const n = Math.lerp(0.0, 2.0, 0.5); // returns 1.0
+ */
+MMath.lerp = function (p, q, time) {
+  return (1.0 - time) * p + time * q;
+};
+
 export default MMath;

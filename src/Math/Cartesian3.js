@@ -34,6 +34,29 @@ function Cartesian3(x, y, z) {
   this.z = defaultValue(z, 0.0);
 }
 
+Object.defineProperties(Cartesian3.prototype, {
+  length: {
+    get: function() {
+      return 3;
+    },
+  },
+  0: {
+    get: function() {
+      return this.x;
+    },
+  },
+  1: {
+    get: function() {
+      return this.y;
+    },
+  },
+  2: {
+    get: function() {
+      return this.z;
+    },
+  },
+});
+
 /**
  * Creates a Cartesian3 instance from x, y and z coordinates.
  *
@@ -280,6 +303,32 @@ Cartesian3.negate = function (cartesian, result) {
   return result;
 };
 
+const scratchMin = new Cartesian3();
+const scratchMax = new Cartesian3();
+
+/**
+ * Constrain a value to lie between two values.
+ *
+ * @param {Cartesian3} value The value to clamp.
+ * @param {Cartesian3|Number} min The minimum bound.
+ * @param {Cartesian3|Number} max The maximum bound.
+ * @param {Cartesian3} result The object into which to store the result.
+ * @returns {Cartesian3} The clamped value such that min <= value <= max.
+ */
+Cartesian3.clamp = function (value, min, max, result) {
+  if (typeof min === 'number') min = Cartesian3.fromElements(min, min, min, scratchMin);
+  if (typeof max === 'number') max = Cartesian3.fromElements(max, max, max, scratchMax);
+
+  const x = MMath.clamp(value.x, min.x, max.x);
+  const y = MMath.clamp(value.y, min.y, max.y);
+  const z = MMath.clamp(value.z, min.z, max.z);
+
+  result.x = x;
+  result.y = y;
+  result.z = z;
+
+  return result;
+};
 
 /**
  * Compares the provided Cartesians componentwise and returns
@@ -391,7 +440,7 @@ Cartesian3.ONE = Object.freeze(new Cartesian3(1.0, 1.0, 1.0));
  * @constant
  */
 Cartesian3.UNIT_X = Object.freeze(new Cartesian3(1.0, 0.0, 0.0));
- 
+
 /**
  * An immutable Cartesian3 instance initialized to (0.0, 1.0, 0.0).
  *
@@ -399,7 +448,7 @@ Cartesian3.UNIT_X = Object.freeze(new Cartesian3(1.0, 0.0, 0.0));
  * @constant
  */
 Cartesian3.UNIT_Y = Object.freeze(new Cartesian3(0.0, 1.0, 0.0));
- 
+
 /**
  * An immutable Cartesian3 instance initialized to (0.0, 0.0, 1.0).
  *
@@ -417,6 +466,26 @@ Cartesian3.UNIT_Z = Object.freeze(new Cartesian3(0.0, 0.0, 1.0));
  */
 Cartesian3.prototype.clone = function (result) {
   return Cartesian3.clone(this, result);
+};
+
+/**
+ * Normalize this 3-dimensions vector.
+ *
+ * @returns {Cartesian3} this object.
+ */
+Cartesian3.prototype.normalize = function() {
+  return Cartesian3.normalize(this, this);
+};
+
+/**
+ * Constrain a value to lie between two values.
+ *
+ * @param {Cartesian3|Number} min The minimum bound.
+ * @param {Cartesian3|Number} max The maximum bound.
+ * @returns {Cartesian3} The clamped value such that min <= value <= max.
+ */
+Cartesian3.prototype.clamp = function(min, max) {
+  return Cartesian3.clamp(this, min, max, this);
 };
 
 /**

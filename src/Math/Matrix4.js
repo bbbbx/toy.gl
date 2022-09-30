@@ -78,9 +78,15 @@ function Matrix4(
   this[13] = defaultValue(column3Row1, 0.0);
   this[14] = defaultValue(column3Row2, 0.0);
   this[15] = defaultValue(column3Row3, 0.0);
-
-  this.length = 16;
 }
+
+Object.defineProperties(Matrix4.prototype, {
+  length: {
+    get: function() {
+      return 16;
+    },
+  },
+});
 
 /**
  * Duplicates a Matrix4 instance.

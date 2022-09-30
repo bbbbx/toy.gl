@@ -51,6 +51,14 @@ function Matrix3(
   this[8] = defaultValue(column2Row2, 0.0);
 }
 
+Object.defineProperties(Matrix3.prototype, {
+  length: {
+    get: function() {
+      return 9;
+    },
+  },
+});
+
 /**
  * Duplicates a Matrix3 instance.
  *
@@ -609,6 +617,32 @@ Matrix3.getScale = function (matrix, result) {
     Cartesian3.fromElements(matrix[6], matrix[7], matrix[8], scratchColumn)
   );
   return result;
+};
+
+
+/**
+ * An immutable Matrix3 instance initialized to the identity matrix.
+ *
+ * @type {Matrix3}
+ * @constant
+ */
+Matrix3.IDENTITY = Object.freeze(
+  new Matrix3(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+);
+
+
+/**
+ * Computes a string representing this Matrix with each row being
+ * on a separate line and in the format '(column0, column1, column2, column3)'.
+ *
+ * @returns {String} A string representing the provided Matrix with each row being on a separate line and in the format '(column0, column1, column2, column3)'.
+ */
+Matrix3.prototype.toString = function () {
+  return (
+    `(${this[0]}, ${this[3]}, ${this[6]})\n` +
+    `(${this[1]}, ${this[4]}, ${this[7]})\n` +
+    `(${this[2]}, ${this[5]}, ${this[8]})\n`
+  );
 };
 
 export default Matrix3;

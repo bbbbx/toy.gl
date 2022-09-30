@@ -10,6 +10,7 @@ export { default as clear } from './clear.js';
 export { default as draw } from './draw.js';
 
 export { default as Spherical } from './Math/Spherical.js';
+export { default as Cartesian2 } from './Math/Cartesian2.js';
 export { default as Cartesian3 } from './Math/Cartesian3.js';
 export { default as Cartesian4 } from './Math/Cartesian4.js';
 export { default as Matrix3 } from './Math/Matrix3.js';

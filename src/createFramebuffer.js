@@ -19,6 +19,9 @@ const FRAMEBUFFER_STATUS = {
  * @returns {WebGLFramebuffer}
  */
 function createFramebuffer(gl, options) {
+  const originalFramebuffer =  gl.getParameter(gl.FRAMEBUFFER_BINDING);
+  const originalTexture = gl.getParameter(gl.TEXTURE_BINDING_2D);
+
   const { colorTexture, depthTexture, depthRenderbuffer } = options;
   const colorAttachments = defaultValue(options.colorAttachments, [ colorTexture ]);
 
@@ -45,13 +48,11 @@ function createFramebuffer(gl, options) {
     gl.bindTexture(gl.TEXTURE_2D, colorTexture);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
   }
-  gl.bindTexture(gl.TEXTURE_2D, null);
 
   // depth
   if (depthTexture) {
     gl.bindTexture(gl.TEXTURE_2D, depthTexture);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
-    gl.bindTexture(gl.TEXTURE_2D, null);
   }
   else if (depthRenderbuffer) {
     const renderbuffer = gl.createRenderbuffer();
@@ -65,6 +66,9 @@ function createFramebuffer(gl, options) {
   if (status !== gl.FRAMEBUFFER_COMPLETE) {
     throw new Error('createFramebuffer: framebuffer combination is NOT completed! Current status is ' + FRAMEBUFFER_STATUS[status] + '.');
   }
+
+  gl.bindTexture(gl.TEXTURE_2D, originalTexture);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, originalFramebuffer);
 
   return fb;
 }

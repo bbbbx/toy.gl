@@ -18,8 +18,7 @@ vec3 GetTransmittance(vec3 eyePos, vec3 lightDir) {
 
     vec3 newPos = eyePos + t*lightDir;
 
-    vec3 rayleighScattering, extinction;
-    float mieScattering;
+    vec3 rayleighScattering, mieScattering, extinction;
 
     getScatteringValues(newPos, rayleighScattering, mieScattering, extinction);
 
@@ -30,14 +29,20 @@ vec3 GetTransmittance(vec3 eyePos, vec3 lightDir) {
 }
 
 void main() {
-  float u = clamp(gl_FragCoord.x, 0.0, uResolution.x-1.) / uResolution.x;
-  float v = clamp(gl_FragCoord.y, 0.0, uResolution.y-1.) / uResolution.y;
+  // float u = clamp(gl_FragCoord.x, 0.0, uTransmittanceLutSizeAndInvSize.x-1.) / uTransmittanceLutSizeAndInvSize.x;
+  // float v = clamp(gl_FragCoord.y, 0.0, uTransmittanceLutSizeAndInvSize.y-1.) / uTransmittanceLutSizeAndInvSize.y;
+  float u = gl_FragCoord.x / uTransmittanceLutSizeAndInvSize.x;
+  float v = gl_FragCoord.y / uTransmittanceLutSizeAndInvSize.y;
+  // gl_FragColor = vec4(u, v, 0, 1);return;
+
   float lightCosTheta = u*2. - 1.;
   float lightTheta = safeAcos(lightCosTheta);
   float radius = mix(uGroundRadiusMM, uAtmosphereRadiusMM, v);
 
-  vec3 eyePos = vec3(0, radius, 0);
-  vec3 lightDir = normalize( vec3(0, lightCosTheta, sin(lightTheta)) );
+  // vec3 eyePos = vec3(0, radius, 0);
+  // vec3 lightDir = normalize( vec3(0, lightCosTheta, sin(lightTheta)) );
+  vec3 eyePos = vec3(0, 0, radius);
+  vec3 lightDir = normalize( vec3(0, sin(lightTheta), lightCosTheta) );
 
   vec4 outColor0;
   outColor0 = vec4(GetTransmittance(eyePos, lightDir), 1);
