@@ -1,0 +1,12 @@
+{
+  "include": ["./lib"],
+  "exclude": ["./node_modules"],
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "lib": ["ESNext", "DOM"],
+    "target": "ES5",
+    "inlineSourceMap": true
+  }
+}
