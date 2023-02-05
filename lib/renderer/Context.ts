@@ -11,10 +11,13 @@ import RenderState from "./RenderState";
 import ShaderCache from "./ShaderCache";
 import ShaderProgram from "./ShaderProgram";
 import TextureCache from "./TextureCache";
+import createGuid from "../core/createGuid";
 
 const defaultClearCommand = new ClearCommand();
 
 class Context {
+  _id: string;
+
   _canvas: HTMLCanvasElement;
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
   _webgl2: boolean;
@@ -37,7 +40,7 @@ class Context {
   _colorBufferHalfFloat: boolean;
   _floatBlend: boolean;
 
-  _textureFilterAnisotropic: number;
+  _textureFilterAnisotropic: EXT_texture_filter_anisotropic;
 
   _vertexArrayObject: boolean;
   _instancedArrays: boolean;
@@ -98,6 +101,7 @@ class Context {
 
     this._gl = gl;
     this._webgl2 = webgl2;
+    this._id = createGuid();
 
     this._stencilBits = gl.getParameter(gl.STENCIL_BITS);
 
@@ -107,6 +111,7 @@ class Context {
     
     // ContextLimits.xxx = glContext.getParameter(glContext.yy);
     ContextLimits._maximumVertexAttributes = gl.getParameter(gl.MAX_VERTEX_ATTRIBS); // min: 8
+    ContextLimits._maximumColorAttachments = this.drawBuffers ? gl.getParameter(WebGLConstant.MAX_COLOR_ATTACHMENTS) : 1;
 
 
     // Extensions
@@ -224,7 +229,9 @@ class Context {
     this._clearStencil = 0;
 
     const rs = RenderState.fromCache();
-    const ps = {};
+    const ps = {
+      context: this,
+    };
 
     this._defaultRenderState = rs;
     this._defaultPassState = ps;
@@ -240,6 +247,15 @@ class Context {
     for (let i = 0; i < ContextLimits._maximumVertexAttributes; i++) {
       this._vertexAttribDivisor.push(0);
     }
+
+    RenderState.apply(gl, rs, ps);
+  }
+
+  public get drawingBufferWidth() : number {
+    return this._gl.drawingBufferWidth;
+  }
+  public get drawingBufferHeight() : number {
+    return this._gl.drawingBufferHeight;
   }
 
   public get shaderCache() : ShaderCache {
@@ -257,6 +273,19 @@ class Context {
   }
   public get drawBuffers() : boolean {
     return this._drawBuffers;
+  }
+  public get textureFloatLinear() : boolean {
+    return this._textureFloatLinear;
+  }
+  public get textureHalfFloatLinear() : boolean {
+    return this._textureHalfFloatLinear;
+  }
+
+  public get webgl2() : boolean {
+    return this._webgl2;
+  }
+  public get id() : string {
+    return this._id;
   }
 
   clear(clearCommand: ClearCommand, passState?) {
@@ -294,9 +323,8 @@ class Context {
       bitmask |= gl.STENCIL_BUFFER_BIT;
     }
 
-    // TODO:
-    // const rs = defaultValue(clearCommand.renderState, this._defaultRenderState);
-    // applyRenderState(this, rs, passState, true);
+    const rs = defaultValue(clearCommand.renderState, this._defaultRenderState);
+    applyRenderState(this, rs, passState, true);
 
     const framebuffer = defaultValue(clearCommand.framebuffer, passState.framebuffer);
     bindFramebuffer(this, framebuffer);
@@ -306,7 +334,7 @@ class Context {
     }
   }
 
-  public draw(drawCommand: DrawCommand, passState, shaderProgram?: ShaderProgram, uniformMap?: Object) {
+  public draw(drawCommand: DrawCommand, passState?, shaderProgram?: ShaderProgram, uniformMap?: Object) {
     passState = defaultValue(passState, this._defaultPassState);
     const framebuffer: Framebuffer = defaultValue(drawCommand.framebuffer, passState.framebuffer);
     const renderState: RenderState = defaultValue(drawCommand.renderState, this._defaultRenderState);
@@ -329,7 +357,7 @@ class Context {
  */
 function beginDraw(context: Context, framebuffer: Framebuffer, passState, shaderProgram: ShaderProgram, renderState: RenderState) {
   bindFramebuffer(context, framebuffer);
-  // applyRenderState(context, renderState);
+  applyRenderState(context, renderState, passState, false);
   shaderProgram._bind();
   context._maxFrameTextureUnitIndex = Math.max(context._maxFrameTextureUnitIndex, shaderProgram.maximumTextureUnitIndex);
 }
@@ -441,7 +469,7 @@ function validateFramebuffer(context) {
   }
 }
 
-function applyRenderState(context: Context, renderState: RenderState, passState?, clear?: boolean) {
+function applyRenderState(context: Context, renderState: RenderState, passState, clear: boolean) {
   const previousRenderState = context._currentRenderState;
   const previousPassState = context._currentPassState;
   context._currentRenderState = renderState;

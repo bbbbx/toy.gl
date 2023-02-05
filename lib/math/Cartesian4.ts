@@ -13,6 +13,14 @@ class Cartesian4 {
     this.w = w;
   }
 
+  static multiplyByUniformScale(cartesian: Cartesian4, scalar: number, result: Cartesian4 = new Cartesian4()): Cartesian4 {
+    result.x = cartesian.x * scalar;
+    result.y = cartesian.y * scalar;
+    result.z = cartesian.z * scalar;
+    result.w = cartesian.w * scalar;
+    return result;
+  }
+
   static equals(left: Cartesian4, right: Cartesian4) {
     return (
       left === right ||

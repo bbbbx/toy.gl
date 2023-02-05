@@ -319,6 +319,7 @@ class VertexArray {
     let vao;
     if (context.vertexArrayObject) {
       vao = context.glCreateVertexArray();
+      context.glBindVertexArray(vao);
       bind(gl, vaAttributes, indexBuffer);
       context.glBindVertexArray(null);
     }

@@ -51,6 +51,35 @@ class Matrix3 {
     );
   }
 
+  /**
+   * Compares the provided matrices componentwise and returns
+   * <code>true</code> if they are within the provided epsilon,
+   * <code>false</code> otherwise.
+   *
+   * @param {Matrix3} [left] The first matrix.
+   * @param {Matrix3} [right] The second matrix.
+   * @param {Number} [epsilon=0] The epsilon to use for equality testing.
+   * @returns {Boolean} <code>true</code> if left and right are within the provided epsilon, <code>false</code> otherwise.
+   */
+  static equalsEpsilon(left: Matrix3, right: Matrix3, epsilon: number) {
+    epsilon = defaultValue(epsilon, 0);
+
+    return (
+      left === right ||
+      (defined(left) &&
+        defined(right) &&
+        Math.abs(left[0] - right[0]) <= epsilon &&
+        Math.abs(left[1] - right[1]) <= epsilon &&
+        Math.abs(left[2] - right[2]) <= epsilon &&
+        Math.abs(left[3] - right[3]) <= epsilon &&
+        Math.abs(left[4] - right[4]) <= epsilon &&
+        Math.abs(left[5] - right[5]) <= epsilon &&
+        Math.abs(left[6] - right[6]) <= epsilon &&
+        Math.abs(left[7] - right[7]) <= epsilon &&
+        Math.abs(left[8] - right[8]) <= epsilon)
+    );
+  };
+
   static equalsArray(matrix: Matrix3, array: number[], offset: number) {
     return (
       matrix[0] === array[offset] &&

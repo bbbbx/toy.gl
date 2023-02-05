@@ -3,6 +3,7 @@ import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
 import CullFace from "../core/CullFace";
 import WindingOrder from "../core/WindingOrder";
+import BoundingRectangle from "../core/BoundingRectangle";
 
 let nextRenderStateId = 0;
 const renderStateCache: {
@@ -18,20 +19,36 @@ class RenderState {
     enabled: boolean,
     face: CullFace,
   };
+  depthTest: {
+    enabled: boolean,
+    func: CullFace,
+  };
+  viewport: BoundingRectangle;
 
   id: number;
+  _applyFunctions: (() => void)[][];
 
   constructor(renderState) {
     const rs = defaultValue(renderState, defaultValue.EMPTY_OBJECT);
     const cull = defaultValue(rs.cull, defaultValue.EMPTY_OBJECT);
+    const depthTest = defaultValue(rs.depthTest, defaultValue.EMPTY_OBJECT);
+    const viewport = rs.viewport;
 
     this.frontFace = defaultValue(rs.frontFace, WindingOrder.COUNTER_CLOCKWISE);
     this.cull = {
       enabled: defaultValue(cull.enabled, false),
       face: defaultValue(cull.face, CullFace.BACK),
     };
+    this.depthTest = {
+      enabled: defaultValue(depthTest.enabled, false),
+      func: defaultValue(depthTest.func, WebGLConstant.LESS),
+    };
+    this.viewport = defined(viewport)
+      ? new BoundingRectangle(viewport.x, viewport.y, viewport.width, viewport.height)
+      : undefined;
 
     this.id = 0;
+    this._applyFunctions = [];
   }
 
   static fromCache(renderState?): RenderState {
@@ -77,13 +94,25 @@ class RenderState {
     clear?: boolean
   ) {
     if (previousRenderState !== renderState) {
-
+      // TODO:
     }
+
+    if (
+      previousRenderState !== renderState ||
+      previousPassState !== previousPassState ||
+      previousPassState.context !== passState.context
+    ) {
+      applyViewport(gl, renderState, passState);
+    }
+    applyCull(gl, renderState);
+    applyDepthTest(gl, renderState);
   }
 
   static apply(gl: WebGLRenderingContext | WebGL2RenderingContext, renderState: RenderState, passState) {
     applyFrontFace(gl, renderState);
     applyCull(gl, renderState);
+    applyDepthTest(gl, renderState);
+    applyViewport(gl, renderState, passState);
   }
 
 }
@@ -109,6 +138,34 @@ function applyCull(gl: WebGLRenderingContext | WebGL2RenderingContext, renderSta
   if (enabled) {
     gl.cullFace(cull.face);
   }
+}
+
+function applyDepthTest(gl: WebGLRenderingContext | WebGL2RenderingContext, renderState: RenderState) {
+  const depthTest = renderState.depthTest;
+  const enabled = depthTest.enabled;
+
+  enableOrDisable(gl, gl.DEPTH_TEST, enabled);
+
+  if (enabled) {
+    gl.depthFunc(depthTest.func);
+  }
+}
+
+const scratchViewport = new BoundingRectangle();
+function applyViewport(
+  gl: WebGLRenderingContext | WebGL2RenderingContext,
+  renderState: RenderState,
+  passState
+) {
+  let viewport = defaultValue(renderState.viewport, passState.viewport);
+  if (!defined(viewport)) {
+    viewport = scratchViewport;
+    viewport.width = passState.context.drawingBufferWidth;
+    viewport.height = passState.context.drawingBufferHeight;
+  }
+
+  // passState.context.uniformState.viewport = viewport;
+  gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 }
 
 export default RenderState;

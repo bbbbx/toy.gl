@@ -62,7 +62,6 @@ class Buffer {
     typedArray?: BufferSource,
     sizeInBytes?: number,
     usage: BufferUsage,
-    bufferTarget?: BufferTarget,
   }): Buffer {
     return new Buffer({
       context: options.context,
@@ -79,7 +78,6 @@ class Buffer {
     typedArray?: BufferSource,
     sizeInBytes?: number,
     usage: BufferUsage,
-    bufferTarget?: BufferTarget,
   }) : Buffer {
     const context = options.context;
     const indexDatatype = options.indexDatatype;

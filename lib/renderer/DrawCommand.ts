@@ -52,7 +52,7 @@ class DrawCommand {
     this.lastDirtyTime = 0;
   }
 
-  public execute(context: Context, passState) {
+  public execute(context: Context, passState?) {
     context.draw(this, passState);
   }
 
