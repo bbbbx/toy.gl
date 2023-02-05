@@ -182,7 +182,7 @@ class UniformFloatVec4 extends Uniform {
         this._gl.uniform4f(this._location, (v as Cartesian4).x, (v as Cartesian4).y, (v as Cartesian4).z, (v as Cartesian4).w);
       }
     } else {
-      throw new DeveloperError(`Invalid vec3 value for uniform "${this.name}".`);
+      throw new DeveloperError(`Invalid vec4 value for uniform "${this.name}".`);
     }
   }
 }
@@ -215,7 +215,7 @@ class UniformSampler extends Uniform {
 
   _setSampler(textureUnitIndex: number): number {
     this.textureUnitIndex = textureUnitIndex;
-    this._gl.uniform1f(this._location, textureUnitIndex);
+    this._gl.uniform1i(this._location, textureUnitIndex);
     return textureUnitIndex + 1;
   }
 }
