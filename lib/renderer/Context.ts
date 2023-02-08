@@ -12,6 +12,27 @@ import ShaderCache from "./ShaderCache";
 import ShaderProgram from "./ShaderProgram";
 import TextureCache from "./TextureCache";
 import createGuid from "../core/createGuid";
+import PixelDatatype from "../core/PixelDatatype";
+import PixelFormat from "../core/PixelFormat";
+import getSizeInBytes from "../core/getSizeInBytes";
+import getComponentsLength from "../core/getComponentsLength";
+
+function createTypedArray(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number, height: number): ArrayBufferView {
+  let Constructor;
+  const sizeInBytes = getSizeInBytes(pixelDatatype);
+  if (sizeInBytes === Uint8Array.BYTES_PER_ELEMENT) {
+    Constructor = Uint8Array;
+  } else if (sizeInBytes === Uint16Array.BYTES_PER_ELEMENT) {
+    Constructor = Uint16Array;
+  } else if (sizeInBytes === Float32Array.BYTES_PER_ELEMENT && pixelDatatype === PixelDatatype.FLOAT) {
+    Constructor = Float32Array;
+  } else {
+    Constructor = Uint32Array;
+  }
+
+  const size = getComponentsLength(pixelFormat) * width * height;
+  return new Constructor(size);
+}
 
 const defaultClearCommand = new ClearCommand();
 
@@ -127,7 +148,7 @@ class Context {
     this._textureHalfFloatLinear = !!getExtension(gl, ['OES_texture_half_float_linear']);
 
     this._colorBufferFloat = !!getExtension(gl, ['EXT_color_buffer_float', 'WEBGL_color_buffer_float']);
-    this._colorBufferHalfFloat = !!getExtension(gl, ['EXT_color_buffer_float', 'WEBGL_color_buffer_half_float']);
+    this._colorBufferHalfFloat = !!getExtension(gl, ['EXT_color_buffer_half_float', 'WEBGL_color_buffer_half_float']);
     this._floatBlend = !!getExtension(gl, ['EXT_float_blend']);
 
     const textureFilterAnisotropic = options.allowTextureFilterAnisotropic
@@ -344,6 +365,37 @@ class Context {
 
     beginDraw(this, framebuffer, passState, shaderProgram, renderState);
     continueDraw(this, drawCommand, shaderProgram, uniformMap);
+  }
+
+  public readPixels(options: {
+    x?: number,
+    y?: number,
+    width?: number,
+    height?: number,
+    framebuffer?: Framebuffer,
+  }): ArrayBufferView {
+    const gl = this._gl;
+
+    const x = defaultValue(options.x, 0);
+    const y = defaultValue(options.y, 0);
+    const width = defaultValue(options.width, gl.drawingBufferWidth);
+    const height = defaultValue(options.height, gl.drawingBufferHeight);
+    const framebuffer = options.framebuffer;
+
+    let pixelDatatype = PixelDatatype.UNSIGNED_BYTE;
+    if (defined(framebuffer) && framebuffer.numberOfColorAttachments > 0) {
+      pixelDatatype = framebuffer.getColorTexture(0).pixelDatatype;
+    }
+    if (pixelDatatype === PixelDatatype.HALF_FLOAT) {
+      pixelDatatype = PixelDatatype.FLOAT;
+    }
+
+    const pixels = createTypedArray(PixelFormat.RGBA, pixelDatatype, width, height);
+
+    bindFramebuffer(this, framebuffer);
+    gl.readPixels(x, y, width, height, PixelFormat.RGBA, pixelDatatype, pixels);
+
+    return pixels;
   }
 }
 

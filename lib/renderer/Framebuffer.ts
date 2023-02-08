@@ -33,13 +33,17 @@ class Framebuffer {
 
   destroyAttachments: boolean
 
+  public get numberOfColorAttachments() : number {
+    return this._activeColorAttachments.length;
+  }
+
   constructor(options: {
     context: Context,
     colorTextures?: Texture[],
     colorRenderbuffers?: Renderbuffer[],
     depthTexture?: Texture,
     depthRenderbuffer?: Renderbuffer,
-    stencilRenderbuffer: Renderbuffer,
+    stencilRenderbuffer?: Renderbuffer,
     depthStencilTexture?: Texture,
     depthStencilRenderbuffer?: Renderbuffer,
     destroyAttachments?: boolean,

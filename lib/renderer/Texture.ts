@@ -12,6 +12,8 @@ import MipmapHint from "./MipmapHint";
 import Sampler from "./Sampler";
 import TextureMagnificationFilter from "./TextureMagnificationFilter";
 import TextureMinificationFilter from "./TextureMinificationFilter";
+import getSizeInBytes from "../core/getSizeInBytes";
+import getComponentsLength from "../core/getComponentsLength";
 
 function toInternalFormat(
   pixelFormat: PixelFormat,
@@ -64,22 +66,6 @@ function toInternalFormat(
   return pixelFormat;
 }
 
-function getComponentsLength(pixelFormat: PixelFormat): number {
-  switch (pixelFormat) {
-    case PixelFormat.RGBA:
-      return 4;
-    case PixelFormat.RGB:
-      return 3;
-    case PixelFormat.LUMINANCE_ALPHA:
-      return 2;
-    case PixelFormat.LUMINANCE:
-    case PixelFormat.ALPHA:
-      return 1;
-    default:
-      return 1;
-  }
-}
-
 function isPacked(pixelDatatype: PixelDatatype): boolean {
   return (
     pixelDatatype === PixelDatatype.UNSIGNED_INT_24_8 ||
@@ -89,29 +75,12 @@ function isPacked(pixelDatatype: PixelDatatype): boolean {
   );
 }
 
-function sizeInBytes(pixelDatatype: PixelDatatype) : number {
-  switch (pixelDatatype) {
-    case PixelDatatype.UNSIGNED_BYTE:
-      return 1;
-    case PixelDatatype.UNSIGNED_SHORT:
-    case PixelDatatype.UNSIGNED_SHORT_4_4_4_4:
-    case PixelDatatype.UNSIGNED_SHORT_5_5_5_1:
-    case PixelDatatype.UNSIGNED_SHORT_5_6_5:
-    case PixelDatatype.HALF_FLOAT:
-      return 2;
-    case PixelDatatype.UNSIGNED_INT:
-    case PixelDatatype.UNSIGNED_INT_24_8:
-    case PixelDatatype.FLOAT:
-      return 4;
-  }
-}
-
 function textureSizeInBytes(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number, height: number): number {
   let componentsLength = getComponentsLength(pixelFormat);
   if (isPacked(pixelDatatype)) {
     componentsLength = 1;
   }
-  return componentsLength * sizeInBytes(pixelDatatype) * width * height;
+  return componentsLength * getSizeInBytes(pixelDatatype) * width * height;
 }
 
 function alignmentInBytes(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number): number {
@@ -257,12 +226,12 @@ class Texture {
     context: Context,
     width: number,
     height: number,
-    source: TextureSource | HTMLVideoElement | HTMLImageElement
-    pixelFormat: PixelFormat,
-    pixelDatatype: PixelDatatype,
-    preMultiplyAlpha: boolean,
-    flipY: boolean,
-    skipColorSpaceConversion: boolean,
+    source?: TextureSource | HTMLVideoElement | HTMLImageElement
+    pixelFormat?: PixelFormat,
+    pixelDatatype?: PixelDatatype,
+    preMultiplyAlpha?: boolean,
+    flipY?: boolean,
+    skipColorSpaceConversion?: boolean,
     sampler?: Sampler
   }) {
     const context = options.context;
@@ -336,7 +305,8 @@ class Texture {
         0,
         internalFormat,
         width,
-        height,0,
+        height,
+        0,
         pixelFormat,
         pixelDatatype,
         null

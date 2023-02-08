@@ -1,0 +1,19 @@
+{
+  "include": [
+    "./**/*"
+  ],
+  "files": [
+    "./index.d.ts"
+  ],
+  "compilerOptions": {
+    "outDir": "dist",
+    "lib": ["DOM", "ESNext"],
+    "module": "ES6",
+    "target": "ES5",
+    "allowJs": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "sourceMap": true
+  }
+}

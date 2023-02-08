@@ -186,30 +186,7 @@ class Matrix4 {
     return result;
   }
 
-  static clone(matrix: Matrix4, result: Matrix4) {
-    if (!defined(matrix)) {
-      return undefined;
-    }
-    if (!defined(result)) {
-      return new Matrix4(
-        matrix[0],
-        matrix[4],
-        matrix[8],
-        matrix[12],
-        matrix[1],
-        matrix[5],
-        matrix[9],
-        matrix[13],
-        matrix[2],
-        matrix[6],
-        matrix[10],
-        matrix[14],
-        matrix[3],
-        matrix[7],
-        matrix[11],
-        matrix[15]
-      );
-    }
+  static clone(matrix: Matrix4, result: Matrix4 = new Matrix4()) {
     result[0] = matrix[0];
     result[1] = matrix[1];
     result[2] = matrix[2];
@@ -230,6 +207,33 @@ class Matrix4 {
   }
 
   /**
+   * Computes a Matrix4 instance representing a uniform scale.
+   *
+   * @param {Number} scale The uniform scale factor.
+   * @param {Matrix4} [result] The object in which the result will be stored, if undefined a new instance will be created.
+   * @returns {Matrix4} The modified result parameter, or a new Matrix4 instance if one was not provided.
+   */
+  static fromUniformScale(scale: number, result: Matrix4 = new Matrix4()) {
+    result[0] = scale;
+    result[1] = 0.0;
+    result[2] = 0.0;
+    result[3] = 0.0;
+    result[4] = 0.0;
+    result[5] = scale;
+    result[6] = 0.0;
+    result[7] = 0.0;
+    result[8] = 0.0;
+    result[9] = 0.0;
+    result[10] = scale;
+    result[11] = 0.0;
+    result[12] = 0.0;
+    result[13] = 0.0;
+    result[14] = 0.0;
+    result[15] = 1.0;
+    return result;
+  }
+
+  /**
    * Computes a Matrix4 instance that transforms from world space to view space.
    *
    * @param {Cartesian3} position The position of the camera.
@@ -239,9 +243,10 @@ class Matrix4 {
    * @param {Matrix4} [result] The object in which the result will be stored.
    * @returns {Matrix4} The modified result parameter.
    */
-  static computeView(position: Cartesian3, direction: Cartesian3, up: Cartesian3, right: Cartesian3, result: Matrix4 = new Matrix4()) {
+  static computeView(position: Cartesian3, direction: Cartesian3, up: Cartesian3, right?: Cartesian3, result: Matrix4 = new Matrix4()) {
     if (!defined(right)) {
       right = Cartesian3.cross(direction, up);
+      Cartesian3.normalize(right, right);
     }
     result[0] = right.x;
     result[1] = up.x;

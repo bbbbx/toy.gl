@@ -65,6 +65,21 @@ class Cartesian3 {
   }
 
   /**
+   * Multiplies the provided Cartesian componentwise by the provided scalar.
+   *
+   * @param {Cartesian3} cartesian The Cartesian to be scaled.
+   * @param {Number} scalar The scalar to multiply with.
+   * @param {Cartesian3} [result] The object onto which to store the result.
+   * @returns {Cartesian3} The modified result parameter.
+   */
+  static multiplyByScalar(cartesian: Cartesian3, scalar: number, result: Cartesian3 = new Cartesian3()) {
+    result.x = cartesian.x * scalar;
+    result.y = cartesian.y * scalar;
+    result.z = cartesian.z * scalar;
+    return result;
+  }
+
+  /**
    * Computes the cross (outer) product of two Cartesians.
    *
    * @param {Cartesian3} left The first Cartesian.
@@ -101,7 +116,7 @@ class Cartesian3 {
     );
   }
 
-  static clone(cartesian: Cartesian3, result: Cartesian3) {
+  static clone(cartesian: Cartesian3, result?: Cartesian3): Cartesian3 {
     if (!defined(cartesian)) {
       return undefined;
     }

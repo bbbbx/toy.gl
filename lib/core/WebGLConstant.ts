@@ -686,6 +686,9 @@ enum WebGLConstant {
   /* WebGL-specific enums */
   MAX_CLIENT_WAIT_TIMEOUT_WEBGL                 = 0x9247,
 
+  // EXT_color_buffer_half_float
+  HALF_FLOAT_OES = 0x8d61,
+
   // Desktop OpenGL
   DOUBLE = 0x140a,
 };

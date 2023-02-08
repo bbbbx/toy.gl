@@ -215,7 +215,7 @@ function createSphereVertices(
   }
 
   const numVertsAround = subdivisionsAxis + 1;
-  const indices = createAugmentedTypedArray(3, subdivisionsAxis * subdivisionsHeight * 2, Uint16Array);
+  const indices = createAugmentedTypedArray(3, subdivisionsAxis * subdivisionsHeight * 2, Uint32Array);
   for (let x = 0; x < subdivisionsAxis; x++) {  // eslint-disable-line
     for (let y = 0; y < subdivisionsHeight; y++) {  // eslint-disable-line
       // Make triangle 1 of quad.
