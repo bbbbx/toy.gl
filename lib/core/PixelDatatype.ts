@@ -1,5 +1,8 @@
 import WebGLConstant from "./WebGLConstant";
 
+/**
+ * @public
+ */
 enum PixelDatatype {
   UNSIGNED_BYTE = WebGLConstant.UNSIGNED_BYTE,
   UNSIGNED_SHORT = WebGLConstant.UNSIGNED_SHORT,

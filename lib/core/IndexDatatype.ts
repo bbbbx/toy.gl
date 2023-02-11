@@ -2,6 +2,9 @@ import WebGLConstant from "./WebGLConstant";
 
 const SIXTY_FOUR_KILOBYTES = 64 * 1024;
 
+/**
+ * @public
+ */
 class IndexDatatype {
   static UNSIGNED_BYTE = WebGLConstant.UNSIGNED_BYTE;
   static UNSIGNED_SHORT = WebGLConstant.UNSIGNED_SHORT;

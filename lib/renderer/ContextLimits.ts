@@ -1,8 +1,17 @@
+/**
+ * @public
+ */
 const ContextLimits = {
+  /**
+   * @internal
+   */
   _maximumVertexAttributes: 0,
+  /**
+   * @internal
+   */
   _maximumColorAttachments: 0,
-  maximumVertexAttributes: undefined,
-  maximumColorAttachments: undefined,
+  maximumVertexAttributes: undefined as number,
+  maximumColorAttachments: undefined as number,
 };
 
 Object.defineProperties(ContextLimits, {

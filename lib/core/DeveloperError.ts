@@ -1,5 +1,8 @@
 import defined from "./defined";
 
+/**
+ * @public
+ */
 class DeveloperError extends Error{
   name = 'DeveloperError';
   message: string;

@@ -1,6 +1,9 @@
 import WebGLConstant from "./WebGLConstant";
 import defined from "./defined";
 
+/**
+ * @public
+ */
 class ComponentDatatype {
   static BYTE = WebGLConstant.BYTE;
   static UNSIGNED_BYTE = WebGLConstant.UNSIGNED_BYTE;

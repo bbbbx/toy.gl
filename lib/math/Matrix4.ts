@@ -10,7 +10,9 @@ const scratchMatrix3Zero = new Matrix3();
 const scratchBottomRow = new Cartesian4();
 const scratchExpectedBottomRow = new Cartesian4(0.0, 0.0, 0.0, 1.0);
 
-
+/**
+ * @public
+ */
 class Matrix4 {
   0: number;
   1: number;
@@ -33,9 +35,6 @@ class Matrix4 {
 
   /**
    * An immutable Matrix4 instance initialized to the identity matrix.
-   *
-   * @type {Matrix4}
-   * @constant
    */
   static IDENTITY = Object.freeze(
     new Matrix4(
@@ -76,22 +75,22 @@ class Matrix4 {
     column2Row3?: number,
     column3Row3?: number
   ) {
-    this[0] = defaultValue(column0Row0, 0.0) as number;
-    this[1] = defaultValue(column0Row1, 0.0) as number;
-    this[2] = defaultValue(column0Row2, 0.0) as number;
-    this[3] = defaultValue(column0Row3, 0.0) as number;
-    this[4] = defaultValue(column1Row0, 0.0) as number;
-    this[5] = defaultValue(column1Row1, 0.0) as number;
-    this[6] = defaultValue(column1Row2, 0.0) as number;
-    this[7] = defaultValue(column1Row3, 0.0) as number;
-    this[8] = defaultValue(column2Row0, 0.0) as number;
-    this[9] = defaultValue(column2Row1, 0.0) as number;
-    this[10] = defaultValue(column2Row2, 0.0) as number;
-    this[11] = defaultValue(column2Row3, 0.0) as number;
-    this[12] = defaultValue(column3Row0, 0.0) as number;
-    this[13] = defaultValue(column3Row1, 0.0) as number;
-    this[14] = defaultValue(column3Row2, 0.0) as number;
-    this[15] = defaultValue(column3Row3, 0.0) as number;
+    this[0] = defaultValue(column0Row0, 0.0);
+    this[1] = defaultValue(column0Row1, 0.0);
+    this[2] = defaultValue(column0Row2, 0.0);
+    this[3] = defaultValue(column0Row3, 0.0);
+    this[4] = defaultValue(column1Row0, 0.0);
+    this[5] = defaultValue(column1Row1, 0.0);
+    this[6] = defaultValue(column1Row2, 0.0);
+    this[7] = defaultValue(column1Row3, 0.0);
+    this[8] = defaultValue(column2Row0, 0.0);
+    this[9] = defaultValue(column2Row1, 0.0);
+    this[10] = defaultValue(column2Row2, 0.0);
+    this[11] = defaultValue(column2Row3, 0.0);
+    this[12] = defaultValue(column3Row0, 0.0);
+    this[13] = defaultValue(column3Row1, 0.0);
+    this[14] = defaultValue(column3Row2, 0.0);
+    this[15] = defaultValue(column3Row3, 0.0);
   }
 
   static equals(left: Matrix4, right: Matrix4) {
@@ -209,9 +208,9 @@ class Matrix4 {
   /**
    * Computes a Matrix4 instance representing a uniform scale.
    *
-   * @param {Number} scale The uniform scale factor.
-   * @param {Matrix4} [result] The object in which the result will be stored, if undefined a new instance will be created.
-   * @returns {Matrix4} The modified result parameter, or a new Matrix4 instance if one was not provided.
+   * @param scale - The uniform scale factor.
+   * @param result - The object in which the result will be stored, if undefined a new instance will be created.
+   * @returns The modified result parameter, or a new Matrix4 instance if one was not provided.
    */
   static fromUniformScale(scale: number, result: Matrix4 = new Matrix4()) {
     result[0] = scale;
@@ -236,12 +235,12 @@ class Matrix4 {
   /**
    * Computes a Matrix4 instance that transforms from world space to view space.
    *
-   * @param {Cartesian3} position The position of the camera.
-   * @param {Cartesian3} direction The forward direction.
-   * @param {Cartesian3} up The up direction.
-   * @param {Cartesian3} [right] The right direction.
-   * @param {Matrix4} [result] The object in which the result will be stored.
-   * @returns {Matrix4} The modified result parameter.
+   * @param position - The position of the camera.
+   * @param direction - The forward direction.
+   * @param up - The up direction.
+   * @param right - The right direction.
+   * @param result - The object in which the result will be stored.
+   * @returns The modified result parameter.
    */
   static computeView(position: Cartesian3, direction: Cartesian3, up: Cartesian3, right?: Cartesian3, result: Matrix4 = new Matrix4()) {
     if (!defined(right)) {
@@ -270,17 +269,17 @@ class Matrix4 {
   /**
    * Computes a Matrix4 instance representing a perspective transformation matrix.
    *
-   * @param {Number} fovY The field of view along the Y axis in radians.
-   * @param {Number} aspectRatio The aspect ratio.
-   * @param {Number} near The distance to the near plane in meters.
-   * @param {Number} far The distance to the far plane in meters.
-   * @param {Matrix4} [result] The object in which the result will be stored.
-   * @returns {Matrix4} The modified result parameter.
+   * @param fovY - The field of view along the Y axis in radians.
+   * @param aspectRatio - The aspect ratio.
+   * @param near - The distance to the near plane in meters.
+   * @param far - The distance to the far plane in meters.
+   * @param result - The object in which the result will be stored.
+   * @returns The modified result parameter.
    *
-   * @exception {DeveloperError} fovY must be in (0, PI].
-   * @exception {DeveloperError} aspectRatio must be greater than zero.
-   * @exception {DeveloperError} near must be greater than zero.
-   * @exception {DeveloperError} far must be greater than zero.
+   * @throws {@link DeveloperError} fovY must be in (0, PI].
+   * @throws {@link DeveloperError} aspectRatio must be greater than zero.
+   * @throws {@link DeveloperError} near must be greater than zero.
+   * @throws {@link DeveloperError} far must be greater than zero.
    */
   static computePerspectiveFieldOfView(
     fovY: number,
@@ -319,10 +318,10 @@ class Matrix4 {
    * Computes the product of a matrix and a {@link Cartesian3}. This is equivalent to calling {@link Matrix4.multiplyByVector}
    * with a {@link Cartesian4} with a <code>w</code> component of 1, but returns a {@link Cartesian3} instead of a {@link Cartesian4}.
    *
-   * @param {Matrix4} matrix The matrix.
-   * @param {Cartesian3} cartesian The point.
-   * @param {Cartesian3} [result] The object onto which to store the result.
-   * @returns {Cartesian3} The modified result parameter.
+   * @param matrix - The matrix.
+   * @param cartesian - The point.
+   * @param result - The object onto which to store the result.
+   * @returns The modified result parameter.
    */
   static multiplyByPoint(matrix: Matrix4, cartesian: Cartesian3, result: Cartesian3 = new Cartesian3()): Cartesian3 {
     const vX = cartesian.x;
@@ -342,10 +341,10 @@ class Matrix4 {
   /**
    * Computes the product of a matrix and a column vector.
    *
-   * @param {Matrix4} matrix The matrix.
-   * @param {Cartesian4} cartesian The vector.
-   * @param {Cartesian4} result The object onto which to store the result.
-   * @returns {Cartesian4} The modified result parameter.
+   * @param matrix - The matrix.
+   * @param cartesian - The vector.
+   * @param result - The object onto which to store the result.
+   * @returns The modified result parameter.
    */
   static multiplyByVector(matrix: Matrix4, cartesian: Cartesian4, result: Cartesian4 = new Cartesian4()): Cartesian4 {
     const vX = cartesian.x;
@@ -368,10 +367,10 @@ class Matrix4 {
   /**
    * Computes the product of two matrices.
    *
-   * @param {Matrix4} left The first matrix.
-   * @param {Matrix4} right The second matrix.
-   * @param {Matrix4} [result] The object onto which to store the result.
-   * @returns {Matrix4} The modified result parameter.
+   * @param left - The first matrix.
+   * @param right - The second matrix.
+   * @param result - The object onto which to store the result.
+   * @returns The modified result parameter.
    */
   static multiply(left: Matrix4, right: Matrix4, result: Matrix4 = new Matrix4()): Matrix4 {
     const left0 = left[0];
@@ -467,11 +466,11 @@ class Matrix4 {
    * Computes the inverse of the provided matrix using Cramers Rule.
    * If the determinant is zero, the matrix can not be inverted, and an exception is thrown.
    *
-   * @param {Matrix4} matrix The matrix to invert.
-   * @param {Matrix4} result The object onto which to store the result.
-   * @returns {Matrix4} The modified result parameter.
+   * @param matrix - The matrix to invert.
+   * @param result - The object onto which to store the result.
+   * @returns The modified result parameter.
    *
-   * @exception {Error} matrix is not invertible because its determinate is zero.
+   * @throws Error matrix is not invertible because its determinate is zero.
    */
   static inverse(matrix: Matrix4, result: Matrix4 = new Matrix4()) {
     //
@@ -673,9 +672,9 @@ class Matrix4 {
   /**
    * Gets the upper left 3x3 matrix of the provided matrix.
    *
-   * @param {Matrix4} matrix The matrix to use.
-   * @param {Matrix3} result The object onto which to store the result.
-   * @returns {Matrix3} The modified result parameter.
+   * @param matrix - The matrix to use.
+   * @param result - The object onto which to store the result.
+   * @returns The modified result parameter.
    */
   static getMatrix3(matrix: Matrix4, result: Matrix3 = new Matrix3()) {
     result[0] = matrix[0];
@@ -693,12 +692,12 @@ class Matrix4 {
   /**
    * Retrieves a copy of the matrix row at the provided index as a Cartesian4 instance.
    *
-   * @param {Matrix4} matrix The matrix to use.
-   * @param {Number} index The zero-based index of the row to retrieve.
-   * @param {Cartesian4} result The object onto which to store the result.
-   * @returns {Cartesian4} The modified result parameter.
+   * @param matrix - The matrix to use.
+   * @param index - The zero-based index of the row to retrieve.
+   * @param result - The object onto which to store the result.
+   * @returns The modified result parameter.
    *
-   * @exception {DeveloperError} index must be 0, 1, 2, or 3.
+   * @throws {@link DeveloperError} index must be 0, 1, 2, or 3.
    */
   static getRow(matrix: Matrix4, index: number, result: Cartesian4 = new Cartesian4()) {
     const x = matrix[index];

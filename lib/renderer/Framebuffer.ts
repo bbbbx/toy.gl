@@ -17,6 +17,9 @@ function attachTexture(framebuffer: Framebuffer, attachment: number, texture: Te
   );
 }
 
+/**
+ * @public
+ */
 class Framebuffer {
   _context: Context;
   _gl: WebGLRenderingContext | WebGL2RenderingContext;

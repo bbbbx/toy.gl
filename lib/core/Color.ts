@@ -1,5 +1,8 @@
 import defined from "./defined";
 
+/**
+ * @public
+ */
 class Color {
   red: number;
   green: number;

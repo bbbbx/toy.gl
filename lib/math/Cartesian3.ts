@@ -1,5 +1,8 @@
 import defined from "../core/defined";
 
+/**
+ * @public
+ */
 class Cartesian3 {
   x: number;
   y: number;
@@ -14,8 +17,8 @@ class Cartesian3 {
   /**
    * Computes the provided Cartesian's squared magnitude.
    *
-   * @param {Cartesian3} cartesian The Cartesian instance whose squared magnitude is to be computed.
-   * @returns {Number} The squared magnitude.
+   * @param cartesian - The Cartesian instance whose squared magnitude is to be computed.
+   * @returns The squared magnitude.
    */
   static magnitudeSquared(cartesian: Cartesian3): number {
     return (
@@ -28,8 +31,8 @@ class Cartesian3 {
   /**
    * Computes the Cartesian's magnitude (length).
    *
-   * @param {Cartesian3} cartesian The Cartesian instance whose magnitude is to be computed.
-   * @returns {Number} The magnitude.
+   * @param cartesian - The Cartesian instance whose magnitude is to be computed.
+   * @returns The magnitude.
    */
   static magnitude(cartesian: Cartesian3): number {
     return Math.sqrt(Cartesian3.magnitudeSquared(cartesian));
@@ -39,9 +42,9 @@ class Cartesian3 {
   /**
    * Computes the normalized form of the supplied Cartesian.
    *
-   * @param {Cartesian3} cartesian The Cartesian to be normalized.
-   * @param {Cartesian3} [result] The object onto which to store the result.
-   * @returns {Cartesian3} The modified result parameter.
+   * @param cartesian - The Cartesian to be normalized.
+   * @param result - The object onto which to store the result.
+   * @returns The modified result parameter.
    */
   static normalize(cartesian: Cartesian3, result: Cartesian3 = new Cartesian3()) {
     const magnitude = Cartesian3.magnitude(cartesian);
@@ -67,10 +70,10 @@ class Cartesian3 {
   /**
    * Multiplies the provided Cartesian componentwise by the provided scalar.
    *
-   * @param {Cartesian3} cartesian The Cartesian to be scaled.
-   * @param {Number} scalar The scalar to multiply with.
-   * @param {Cartesian3} [result] The object onto which to store the result.
-   * @returns {Cartesian3} The modified result parameter.
+   * @param cartesian - The Cartesian to be scaled.
+   * @param scalar - The scalar to multiply with.
+   * @param result - The object onto which to store the result.
+   * @returns The modified result parameter.
    */
   static multiplyByScalar(cartesian: Cartesian3, scalar: number, result: Cartesian3 = new Cartesian3()) {
     result.x = cartesian.x * scalar;
@@ -82,10 +85,10 @@ class Cartesian3 {
   /**
    * Computes the cross (outer) product of two Cartesians.
    *
-   * @param {Cartesian3} left The first Cartesian.
-   * @param {Cartesian3} right The second Cartesian.
-   * @param {Cartesian3} [result] The object onto which to store the result.
-   * @returns {Cartesian3} The cross product.
+   * @param left - The first Cartesian.
+   * @param right - The second Cartesian.
+   * @param result - The object onto which to store the result.
+   * @returns The cross product.
    */
   static cross(left: Cartesian3, right: Cartesian3, result: Cartesian3 = new Cartesian3()): Cartesian3 {
     const leftX = left.x;

@@ -1,9 +1,8 @@
 import ShaderSource from "./ShaderSource";
-import { CachedShader } from "./ShaderCache.d";
-import { AttributeLocations } from "./ShaderProgram.d";
 import defined from "../core/defined";
 import { createUniform, Uniform, UniformSampler } from "./createUniform";
-import defaultValue from "../core/defaultValue";
+import { AttributeLocations } from "./IShaderProgram";
+import { CachedShader } from "./IShaderCache";
 
 function handleUniformPrecisionMismatches(vertexShaderText: string, fragmentShaderText: string) {
   const duplicateUniformNames = {};
@@ -15,6 +14,9 @@ function handleUniformPrecisionMismatches(vertexShaderText: string, fragmentShad
 
 let nextShaderProgramId = 0;
 
+/**
+ * @public
+ */
 class ShaderProgram {
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
   _program: WebGLProgram;

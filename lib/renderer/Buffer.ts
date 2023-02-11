@@ -7,25 +7,82 @@ import IndexDatatype from "../core/IndexDatatype";
 
 type BufferTarget = WebGLConstant.ELEMENT_ARRAY_BUFFER | WebGLConstant.ARRAY_BUFFER;
 
+/**
+ * A GL Buffer Encapsulation.
+ * @public
+ */
 class Buffer {
+  /** @internal */
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
+  /** @internal */
   _webgl2: boolean;
+  /** @internal */
   _bufferTarget: BufferTarget;
+  /** @internal */
   _sizeInBytes: number;
+  /** @internal */
   _usage: BufferUsage;
+  /** @internal */
   _buffer: WebGLBuffer;
+
+  /**
+   * Get the buffer size in bytes unit.
+   * @readonly
+   */
+  get sizeInBytes() {
+    return this._sizeInBytes;
+  }
+
+  /**
+   * Get the buffer usage, see {@link BufferUsage}.
+   * @readonly
+   */
+  get usage() {
+    return this._usage;
+  }
+
+  /**
+   * Index buffer data type, index buffer only.
+   * @readonly
+   */
+  indexDatatype: number | undefined;
+
+  /**
+   * Bytes pre index, index buffer only.
+   * @readonly
+   */
+  bytesPerIndex: number | undefined;
+
+  /**
+   * Number of indices, index buffer only.
+   * @readonly
+   */
+  numberOfIndices: number | undefined;
+
+  /**
+   * Whether to destroy this buffer when its vertex array object is destroyed.
+   * @defaultValue `true`
+   */
   vertexArrayDestroyable: boolean;
 
-  indexDatatype: number;
-  bytesPerIndex: number;
-  numberOfIndices: number;
+  /**
+   * @returns Native WebGLBuffer
+   * @internal
+   */
+  _getBuffer() {
+    return this._buffer;
+  }
 
+  /**
+   * @remarks
+   * Use {@link Buffer.createVertexBuffer} or {@link Buffer.createIndexBuffer} to create buffer.
+   * */
   constructor(options: {
     context: Context,
-    typedArray?: BufferSource,
-    sizeInBytes?: number,
-    usage?: BufferUsage,
-    bufferTarget?: BufferTarget,
+    typedArray: BufferSource,
+    sizeInBytes: number,
+    usage: BufferUsage,
+    bufferTarget: BufferTarget,
   }) {
     const gl = options.context._gl;
     const bufferTarget = options.bufferTarget;
@@ -57,6 +114,11 @@ class Buffer {
     this.vertexArrayDestroyable = true;
   }
 
+  /**
+   * Create a buffer for vertex attributes.
+   * @param options -
+   * @returns The Buffer object
+   */
   static createVertexBuffer(options: {
     context: Context,
     typedArray?: BufferSource,
@@ -72,6 +134,11 @@ class Buffer {
     });
   }
 
+  /**
+   * Create a buffer for vertex indices.
+   * @param options -
+   * @returns The Buffer object
+   */
   static createIndexBuffer(options: {
     context: Context,
     indexDatatype: number,
@@ -79,7 +146,6 @@ class Buffer {
     sizeInBytes?: number,
     usage: BufferUsage,
   }) : Buffer {
-    const context = options.context;
     const indexDatatype = options.indexDatatype;
 
     const bytesPerIndex = IndexDatatype.getSizeInBytes(indexDatatype);
@@ -95,17 +161,17 @@ class Buffer {
 
     Object.defineProperties(buffer, {
       indexDatatype: {
-        get: function() {
+        get() {
           return indexDatatype;
         },
       },
       bytesPerIndex: {
-        get: function() {
-          return indexDatatype;
+        get() {
+          return bytesPerIndex;
         },
       },
       numberOfIndices: {
-        get: function() {
+        get() {
           return numberOfIndices;
         },
       },
@@ -114,22 +180,18 @@ class Buffer {
     return buffer;
   }
 
-  get sizeInBytes() {
-    return this._sizeInBytes;
-  }
-
-  get usage() {
-    return this.usage;
-  }
-
-  _getBuffer() {
-    return this._buffer;
-  }
-
-  public isDestroyed() {
+  /**
+   * Whether this buffer is destroyed.
+   * @returns 
+   */
+  public isDestroyed() : boolean {
     return false;
   }
 
+  /**
+   * Release the WebGL buffer memory.
+   * @returns 
+   */
   public destroy() {
     this._gl.deleteBuffer(this._buffer);
     return destroyObject(this);

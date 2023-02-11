@@ -1,9 +1,9 @@
 import defined from "../core/defined";
-import { CachedShader } from "./ShaderCache.d";
 import Context from "./Context";
 import ShaderProgram from "./ShaderProgram";
 import ShaderSource from "./ShaderSource";
-import { AttributeLocations } from "./ShaderProgram.d";
+import { AttributeLocations } from "./IShaderProgram";
+import { CachedShader } from "./IShaderCache";
 
 class ShaderCache {
   _context: Context;

@@ -20,17 +20,7 @@ interface Attribute {
   instanceDivisor?: number,
 }
 
-interface VertexArrayAttribute {
-  index: number
-  enabled: boolean
-  vertexBuffer: Buffer,
-  value: number[]
-  componentsPerAttribute: number,
-  componentDatatype: number,
-  normalize: boolean,
-  offsetInBytes: number,
-  strideInBytes: number,
-  instanceDivisor: number,
+interface VertexArrayAttribute extends Attribute {
   vertexAttrib: (gl: WebGLRenderingContext | WebGL2RenderingContext) => void,
   disableVertexAttribArray: (gl: WebGLRenderingContext | WebGL2RenderingContext) => void,
 }
@@ -82,16 +72,16 @@ function addAttribute(attributes: VertexArrayAttribute[], attribute: Attribute, 
 
   // Shallow copy the attribute; we do not want to copy the vertex buffer.
   const attr : VertexArrayAttribute = {
-    index: defaultValue(attribute.index, index) as number,
-    enabled: defaultValue(attribute.enabled, true) as boolean,
+    index: defaultValue(attribute.index, index),
+    enabled: defaultValue(attribute.enabled, true),
     vertexBuffer: attribute.vertexBuffer,
     value: hasValue ? attribute.value.slice(0) : undefined,
     componentsPerAttribute: componentsPerAttribute,
     componentDatatype: defaultValue(attribute.componentDatatype, ComponentDatatype.FLOAT),
-    normalize: defaultValue(attribute.normalize, false) as boolean,
-    offsetInBytes: defaultValue(attribute.offsetInBytes, 0) as number,
-    strideInBytes: defaultValue(attribute.strideInBytes, 0) as number,
-    instanceDivisor: defaultValue(attribute.instanceDivisor, 0) as number,
+    normalize: defaultValue(attribute.normalize, false),
+    offsetInBytes: defaultValue(attribute.offsetInBytes, 0),
+    strideInBytes: defaultValue(attribute.strideInBytes, 0),
+    instanceDivisor: defaultValue(attribute.instanceDivisor, 0),
 
     vertexAttrib: undefined,
     disableVertexAttribArray: undefined,
@@ -222,14 +212,25 @@ function setConstantAttributes(vertexArray: VertexArray, gl: WebGLRenderingConte
   }
 }
 
+/**
+ * @public
+ */
 class VertexArray {
+  /** @internal */
   _numberOfVertices: number;
+  /** @internal */
   _hasInstancedAttributes: boolean;
+  /** @internal */
   _hasConstantAttributes: boolean;
+  /** @internal */
   _context: Context;
+  /** @internal */
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
+  /** @internal */
   _vao: WebGLVertexArrayObjectOES | WebGLVertexArrayObject;
+  /** @internal */
   _attributes: VertexArrayAttribute[];
+  /** @internal */
   _indexBuffer: Buffer;
 
   public get indexBuffer() : Buffer {
@@ -242,11 +243,12 @@ class VertexArray {
   /**
    * Create a vertex array, which defines the attributes making up a vertex, and contains an optional index buffer
    * to select vertices for rendering. Attributes are defined using object literals as shown in Example 1 below.
-   * @param options 
+   * @param options -
    * 
    * @example
-   * // Example 1: Create a vertex array with vertices made up of three floating point
-   * // values, e.g., a position, from a single vertex buffer. No index buffer is used.
+   * Create a vertex array with vertices made up of three floating point
+   * values, e.g., a position, from a single vertex buffer. No index buffer is used.
+   * ```js
    * const positionBuffer = Buffer.createVertexBuffer({
    *   context: context,
    *   sizeInBytes: 12,
@@ -268,9 +270,10 @@ class VertexArray {
    *   context: context,
    *   attributes: attributes,
    * });
+   * ```
    * 
    * @example
-   * // Example 2: Create a vertex array with vertices from two different vertex buffers.
+   * Create a vertex array with vertices from two different vertex buffers.
    */
   constructor(options: {
     context: Context,
@@ -338,6 +341,7 @@ class VertexArray {
     return this._attributes[index];
   }
 
+  /** @internal */
   public _bind() {
     if (defined(this._vao)) {
       this._context.glBindVertexArray(this._vao);
@@ -352,6 +356,7 @@ class VertexArray {
     }
   }
 
+  /** @internal */
   public _unBind() {
     if (defined(this._vao)) {
       this._context.glBindVertexArray(null);

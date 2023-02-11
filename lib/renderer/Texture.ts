@@ -119,6 +119,9 @@ interface TextureSource {
   framebuffer: Framebuffer,
 }
 
+/**
+ * @public
+ */
 class Texture {
   _context: Context;
   _textureTarget: number;
@@ -280,7 +283,7 @@ class Texture {
 
     const isCompressed = isCompressedFormat(pixelFormat);
     let unpackAlignment = 4;
-    if (defined(source) && defined((source as any).arrayBufferView) && !isCompressed) {
+    if (defined(source) && defined((source as TextureSource).arrayBufferView) && !isCompressed) {
       unpackAlignment = alignmentInBytes(pixelFormat, pixelDatatype, width);
     }
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, unpackAlignment);
@@ -292,9 +295,9 @@ class Texture {
     }
 
     if (defined(source)) {
-      if (defined((source as any).arrayBufferView)) {
+      if (defined((source as TextureSource).arrayBufferView)) {
         throw new Error("To be implemented.");
-      } else if (defined((source as any).framebuffer)) {
+      } else if (defined((source as TextureSource).framebuffer)) {
         throw new Error("To be implemented.");
       } else {
         throw new Error("To be implemented.");

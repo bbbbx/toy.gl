@@ -23,3 +23,5 @@ export { default as Cartesian2 } from './math/Cartesian2';
 export { default as Cartesian3 } from './math/Cartesian3';
 export { default as Cartesian4 } from './math/Cartesian4';
 export { default as Matrix4 } from './math/Matrix4';
+
+export { default as DeveloperError } from './core/DeveloperError';

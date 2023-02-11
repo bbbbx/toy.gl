@@ -23,15 +23,15 @@ class Matrix3 {
     column1Row2?: number,
     column2Row2?: number
   ) {
-    this[0] = defaultValue(column0Row0, 0.0) as number;
-    this[1] = defaultValue(column0Row1, 0.0) as number;
-    this[2] = defaultValue(column0Row2, 0.0) as number;
-    this[3] = defaultValue(column1Row0, 0.0) as number;
-    this[4] = defaultValue(column1Row1, 0.0) as number;
-    this[5] = defaultValue(column1Row2, 0.0) as number;
-    this[6] = defaultValue(column2Row0, 0.0) as number;
-    this[7] = defaultValue(column2Row1, 0.0) as number;
-    this[8] = defaultValue(column2Row2, 0.0) as number;
+    this[0] = defaultValue(column0Row0, 0.0);
+    this[1] = defaultValue(column0Row1, 0.0);
+    this[2] = defaultValue(column0Row2, 0.0);
+    this[3] = defaultValue(column1Row0, 0.0);
+    this[4] = defaultValue(column1Row1, 0.0);
+    this[5] = defaultValue(column1Row2, 0.0);
+    this[6] = defaultValue(column2Row0, 0.0);
+    this[7] = defaultValue(column2Row1, 0.0);
+    this[8] = defaultValue(column2Row2, 0.0);
   }
 
   static equals(left: Matrix3, right: Matrix3) {
@@ -56,14 +56,12 @@ class Matrix3 {
    * <code>true</code> if they are within the provided epsilon,
    * <code>false</code> otherwise.
    *
-   * @param {Matrix3} [left] The first matrix.
-   * @param {Matrix3} [right] The second matrix.
-   * @param {Number} [epsilon=0] The epsilon to use for equality testing.
-   * @returns {Boolean} <code>true</code> if left and right are within the provided epsilon, <code>false</code> otherwise.
+   * @param left - The first matrix.
+   * @param right - The second matrix.
+   * @param epsilon - The epsilon to use for equality testing.
+   * @returns <code>true</code> if left and right are within the provided epsilon, <code>false</code> otherwise.
    */
-  static equalsEpsilon(left: Matrix3, right: Matrix3, epsilon: number) {
-    epsilon = defaultValue(epsilon, 0);
-
+  static equalsEpsilon(left: Matrix3, right: Matrix3, epsilon: number = 0.0) : boolean {
     return (
       left === right ||
       (defined(left) &&

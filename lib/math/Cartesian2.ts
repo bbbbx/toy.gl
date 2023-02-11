@@ -1,5 +1,8 @@
 import defined from "../core/defined";
 
+/**
+ * @public
+ */
 class Cartesian2 {
   x: number;
   y: number;

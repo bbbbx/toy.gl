@@ -13,10 +13,10 @@ class Matrix2 {
     column0Row1?: number,
     column1Row1?: number
   ) {
-    this[0] = defaultValue(column0Row0, 0.0) as number;
-    this[1] = defaultValue(column0Row1, 0.0) as number;
-    this[2] = defaultValue(column1Row0, 0.0) as number;
-    this[3] = defaultValue(column1Row1, 0.0) as number;
+    this[0] = defaultValue(column0Row0, 0.0);
+    this[1] = defaultValue(column0Row1, 0.0);
+    this[2] = defaultValue(column1Row0, 0.0);
+    this[3] = defaultValue(column1Row1, 0.0);
   }
 
   static equals(left: Matrix2, right: Matrix2) {

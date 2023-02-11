@@ -4,6 +4,9 @@ import Context from "./Context";
 import Framebuffer from "./Framebuffer";
 import RenderState from "./RenderState";
 
+/**
+ * @public
+ */
 class ClearCommand {
   color: Color;
   depth: number;

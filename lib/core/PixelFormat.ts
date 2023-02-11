@@ -1,5 +1,8 @@
 import WebGLConstant from "./WebGLConstant";
 
+/**
+ * @public
+ */
 enum PixelFormat {
   RGBA = WebGLConstant.RGBA,
   RGB = WebGLConstant.RGB,

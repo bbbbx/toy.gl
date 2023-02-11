@@ -389,7 +389,6 @@ class UniformMat4 extends Uniform {
   }
 }
 
-// export default createUniform;
 export {
   Uniform,
   UniformSampler,

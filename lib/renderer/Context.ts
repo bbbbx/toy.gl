@@ -16,6 +16,7 @@ import PixelDatatype from "../core/PixelDatatype";
 import PixelFormat from "../core/PixelFormat";
 import getSizeInBytes from "../core/getSizeInBytes";
 import getComponentsLength from "../core/getComponentsLength";
+import PassState from "./PassState";
 
 function createTypedArray(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number, height: number): ArrayBufferView {
   let Constructor;
@@ -36,50 +37,87 @@ function createTypedArray(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype
 
 const defaultClearCommand = new ClearCommand();
 
+/**
+ * @public
+ */
 class Context {
+  /** @internal */
   _id: string;
 
+  /** @internal */
   _canvas: HTMLCanvasElement;
+  /** @internal */
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
+  /** @internal */
   _webgl2: boolean;
+  /** @internal */
   _stencilBits: number;
+  /** @internal */
   _shaderCache: ShaderCache;
+  /** @internal */
   _textureCache: TextureCache;
 
+  /** @internal */
   _standardDerivatives: boolean;
+  /** @internal */
   _depthTexture: boolean;
+  /** @internal */
   _fragDepth: boolean;
+  /** @internal */
   _elementIndexUint: boolean;
+  /** @internal */
   _debugShaders: WEBGL_debug_shaders;
 
+  /** @internal */
   _textureFloat: boolean;
+  /** @internal */
   _textureHalfFloat: boolean;
+  /** @internal */
   _textureFloatLinear: boolean;
+  /** @internal */
   _textureHalfFloatLinear: boolean;
 
+  /** @internal */
   _colorBufferFloat: boolean;
+  /** @internal */
   _colorBufferHalfFloat: boolean;
+  /** @internal */
   _floatBlend: boolean;
 
+  /** @internal */
   _textureFilterAnisotropic: EXT_texture_filter_anisotropic;
 
+  /** @internal */
   _vertexArrayObject: boolean;
+  /** @internal */
   _instancedArrays: boolean;
+  /** @internal */
   _drawBuffers: boolean;
 
+  /** @internal */
   _clearColor: Color;
+  /** @internal */
   _clearDepth: number;
+  /** @internal */
   _clearStencil: number;
 
+  /** @internal */
   _defaultRenderState: RenderState;
+  /** @internal */
   _defaultPassState;
 
+  /** @internal */
   _currentRenderState: RenderState;
-  _currentPassState;
+  /** @internal */
+  _currentPassState: PassState;
+  /** @internal */
   _currentFramebuffer: Framebuffer;
+  /** @internal */
   _maxFrameTextureUnitIndex: number;
 
+  /** @internal */
   _vertexAttribDivisor: number[];
+  /** @internal */
   _previousDrawInstanced: boolean;
 
   // Validation and logging disabled by default for speed.
@@ -87,16 +125,24 @@ class Context {
   validateShaderProgram = false;
   logShaderCompilation = false;
 
+  /** @internal */
   _us; // UniformState;
 
+  /** @internal */
   glCreateVertexArray: () => WebGLVertexArrayObject | WebGLVertexArrayObjectOES;
+  /** @internal */
   glBindVertexArray: (vertexArray: WebGLVertexArrayObject | WebGLVertexArrayObjectOES) => void;
+  /** @internal */
   glDeleteVertexArray: (vertexArray: WebGLVertexArrayObject | WebGLVertexArrayObjectOES) => void;
 
+  /** @internal */
   glDrawElementsInstanced: (mode: number, count: number, type: number, offset: number, instanceCount: number) => void;
+  /** @internal */
   glDrawArraysInstanced: (mode: number, first: number, count: number, instanceCount: number) => void;
+  /** @internal */
   glVertexAttribDivisor: (index: number, divisor: number) => void;
 
+  /** @internal */
   glDrawBuffers: (buffers: number[]) => void;
 
   constructor(canvas: HTMLCanvasElement, options: {
@@ -250,9 +296,7 @@ class Context {
     this._clearStencil = 0;
 
     const rs = RenderState.fromCache();
-    const ps = {
-      context: this,
-    };
+    const ps = new PassState(this);
 
     this._defaultRenderState = rs;
     this._defaultPassState = ps;
@@ -309,10 +353,10 @@ class Context {
     return this._id;
   }
 
-  clear(clearCommand: ClearCommand, passState?) {
-    clearCommand = defaultValue(clearCommand, defaultClearCommand);
-    passState = defaultValue(passState, this._defaultPassState);
-
+  clear(
+    clearCommand: ClearCommand = defaultClearCommand,
+    passState: PassState = this._defaultPassState
+  ) {
     const gl = this._gl;
     let bitmask = 0;
 
@@ -355,7 +399,7 @@ class Context {
     }
   }
 
-  public draw(drawCommand: DrawCommand, passState?, shaderProgram?: ShaderProgram, uniformMap?: Object) {
+  public draw(drawCommand: DrawCommand, passState?: PassState, shaderProgram?: ShaderProgram, uniformMap?: Object) {
     passState = defaultValue(passState, this._defaultPassState);
     const framebuffer: Framebuffer = defaultValue(drawCommand.framebuffer, passState.framebuffer);
     const renderState: RenderState = defaultValue(drawCommand.renderState, this._defaultRenderState);
@@ -407,7 +451,7 @@ class Context {
  * @param shaderProgram 
  * @param renderState 
  */
-function beginDraw(context: Context, framebuffer: Framebuffer, passState, shaderProgram: ShaderProgram, renderState: RenderState) {
+function beginDraw(context: Context, framebuffer: Framebuffer, passState: PassState, shaderProgram: ShaderProgram, renderState: RenderState) {
   bindFramebuffer(context, framebuffer);
   applyRenderState(context, renderState, passState, false);
   shaderProgram._bind();
@@ -436,9 +480,9 @@ function continueDraw(context: Context, drawCommand: DrawCommand, shaderProgram:
     offset = offset * indexBuffer.bytesPerIndex; // offset in vertices to offset in bytes
     count = defaultValue(count, indexBuffer.numberOfIndices);
     if (instanceCount === 0) {
-      context._gl.drawElements(primitiveType, count, indexBuffer.indexDatatype as number, offset);
+      context._gl.drawElements(primitiveType, count, indexBuffer.indexDatatype, offset);
     } else {
-      context.glDrawElementsInstanced(primitiveType, count, indexBuffer.indexDatatype as number, offset, instanceCount);
+      context.glDrawElementsInstanced(primitiveType, count, indexBuffer.indexDatatype, offset, instanceCount);
     }
   } else {
     count = defaultValue(count, va.numberOfVertices);
@@ -521,7 +565,7 @@ function validateFramebuffer(context) {
   }
 }
 
-function applyRenderState(context: Context, renderState: RenderState, passState, clear: boolean) {
+function applyRenderState(context: Context, renderState: RenderState, passState: PassState, clear: boolean) {
   const previousRenderState = context._currentRenderState;
   const previousPassState = context._currentPassState;
   context._currentRenderState = renderState;

@@ -1,5 +1,8 @@
 import WebGLConstant from "./WebGLConstant";
 
+/**
+ * @public
+ */
 enum PrimitiveType {
   POINTS = WebGLConstant.POINTS,
   LINES = WebGLConstant.LINES,

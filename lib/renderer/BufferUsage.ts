@@ -1,5 +1,8 @@
 import WebGLConstant from "../core/WebGLConstant";
 
+/**
+ * @public
+ */
 enum BufferUsage {
   STATIC_DRAW = WebGLConstant.STATIC_DRAW,
   STREAM_DRAW = WebGLConstant.STREAM_DRAW,

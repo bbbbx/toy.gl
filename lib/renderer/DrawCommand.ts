@@ -10,6 +10,9 @@ interface UniformMap {
   [name: string]: () => void,
 }
 
+/**
+ * @public
+ */
 class DrawCommand {
   _vertexArray: VertexArray;
   _count: number;
