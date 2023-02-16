@@ -193,13 +193,12 @@ function createAndLinkProgram(
 
   gl.linkProgram(program);
 
-  let log;
+  let log: string;
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     const debugShaders = shaderProgram._debugShaders;
 
     if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
       log = gl.getShaderInfoLog(fragmentShader);
-      console.error(`Fragment shader compile log: ${log}`);
       if (defined(debugShaders)) {
         const fragmentSourceTranslation = debugShaders.getTranslatedShaderSource(fragmentShader);
         if (fragmentSourceTranslation !== '') {
@@ -208,11 +207,11 @@ function createAndLinkProgram(
           console.error(`Fragment shader translation failed.`);
         }
       }
+      outputSurroundingSourceCode(log, fragmentShaderText, 'Failed to compile fragment shader: \n');
     }
 
     if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
       log = gl.getShaderInfoLog(vertexShader);
-      console.error(`Vertex shader compile log: ${log}`);
       if (defined(debugShaders)) {
         const vertexSourceTranslation = debugShaders.getTranslatedShaderSource(vertexShader);
         if (vertexSourceTranslation !== '') {
@@ -221,6 +220,7 @@ function createAndLinkProgram(
           console.error(`Vertex shader translation failed.`);
         }
       }
+      outputSurroundingSourceCode(log, vertexShaderText, 'Failed to compile vertex shader: \n');
     }
 
     log = gl.getProgramInfoLog(program);
@@ -253,6 +253,84 @@ function createAndLinkProgram(
   gl.deleteShader(fragmentShader);
 
   return program;
+}
+
+function outputSurroundingSourceCode(shaderInfoLog: string, shaderSource: string, errorPrefix = ''): never {
+  const infoLogs = shaderInfoLog.split('\n');
+  const lines = shaderSource.split('\n');
+  let lineNumberWidth = 0;
+
+  const infoLogReg = /(WARNING|ERROR): ([0-9]*):(-?[0-9]*):(.*)/i;
+  const extractedInfoLogs: {
+    type: string,
+    lineNumber: number,
+    message: string,
+  }[] = [];
+  for (const infoLog of infoLogs) {
+    const matches = infoLog.match(infoLogReg);
+    if (matches && matches.length === 5) {
+      extractedInfoLogs.push({
+        type: matches[1],
+        lineNumber: parseInt(matches[3]),
+        message: matches[4],
+      });
+    }
+  }
+
+  // Get line number width
+  let currentLineNumber = 0;
+  const lineMarcoRegex = /^\s*#line\s+(-?\d+)/i;
+  for (const line of lines) {
+
+    const matchedLineMarco = line.match(lineMarcoRegex);
+    if (matchedLineMarco && matchedLineMarco.length === 2) {
+      currentLineNumber = parseInt(matchedLineMarco[1]);
+    } else {
+      ++currentLineNumber;
+    }
+
+    lineNumberWidth = Math.max(lineNumberWidth, currentLineNumber.toString().length);
+  }
+
+  currentLineNumber = 1;
+  const preprocessedLines = [];
+  const noErrorPrefix = ' '.repeat(4);
+  const meetErrorPrefix = '=>'.padEnd(noErrorPrefix.length, ' ');
+  const lineNumberWidthSpace = ' '.repeat(lineNumberWidth);
+  for (const line of lines) {
+    const matchedLineMarco = line.match(lineMarcoRegex);
+
+    if (matchedLineMarco && matchedLineMarco.length === 2) {
+      preprocessedLines.push(noErrorPrefix + lineNumberWidthSpace + ': ' + line);
+      currentLineNumber = parseInt(matchedLineMarco[1]);
+      continue;
+    }
+
+
+    const currentLineMeetInfoLogs = extractedInfoLogs.filter(infoLog => {
+      const matched = infoLog.message.match(/'(.*)' :/);
+      return (
+        infoLog.lineNumber === currentLineNumber &&
+        matched &&
+        line.includes(matched[1])
+      );
+    });
+    const meetInfoLogs = currentLineMeetInfoLogs.length > 0;
+    if (meetInfoLogs) {
+      preprocessedLines.push(currentLineMeetInfoLogs.map(infoLog => `${noErrorPrefix}${lineNumberWidthSpace}: ${infoLog.type}:${infoLog.message}`).join('\n'));
+    }
+    preprocessedLines.push((meetInfoLogs ? meetErrorPrefix : noErrorPrefix) + currentLineNumber.toString().padStart(lineNumberWidth, ' ') + ': ' + line);
+
+    ++currentLineNumber;
+  }
+
+  throw new Error('\n' +
+    errorPrefix +
+    'Info Log:\n' +
+    infoLogs.map(message => '\t' + message).join('\n') + '\n' +
+    'Shader Source:\n' +
+    preprocessedLines.join('\n')
+  );
 }
 
 function findUniforms(gl: WebGLRenderingContext | WebGL2RenderingContext, program: WebGLProgram) {
