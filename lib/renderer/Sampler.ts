@@ -4,11 +4,19 @@ import TextureMagnificationFilter from "./TextureMagnificationFilter";
 import TextureMinificationFilter from "./TextureMinificationFilter";
 import TextureWrap from "./TextureWrap";
 
+/**
+ * @public
+ */
 class Sampler {
+  /** @internal */
   _wrapS: TextureWrap;
+  /** @internal */
   _wrapT: TextureWrap;
+  /** @internal */
   _minificationFilter: TextureMinificationFilter;
+  /** @internal */
   _magnificationFilter: TextureMagnificationFilter;
+  /** @internal */
   _maximumAnisotropy: number;
 
   static NEAREST = Object.freeze(new Sampler({
@@ -18,6 +26,10 @@ class Sampler {
     magnificationFilter: TextureMagnificationFilter.NEAREST,
   }));
 
+  /**
+   * Default creation is a clamp to edge wrap mode and linear filter sampler.
+   * @param options -
+   */
   constructor(options?: {
     wrapS?: TextureWrap,
     wrapT?: TextureWrap,

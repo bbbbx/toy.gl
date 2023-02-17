@@ -1,5 +1,8 @@
 import WebGLConstant from "./WebGLConstant";
 
+/**
+ * @public
+ */
 enum StencilFunction {
   NEVER = WebGLConstant.NEVER,
   ALWAYS = WebGLConstant.ALWAYS,

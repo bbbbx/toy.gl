@@ -1,5 +1,8 @@
 import WebGLConstant from "./WebGLConstant";
 
+/**
+ * @public
+ */
 enum StencilOperation {
   ZERO = WebGLConstant.ZERO,
   KEEP = WebGLConstant.KEEP,

@@ -1,5 +1,8 @@
 import WebGLConstant from "../core/WebGLConstant";
 
+/**
+ * @public
+ */
 enum TextureWrap {
   CLAMP_TO_EDGE = WebGLConstant.CLAMP_TO_EDGE,
   REPEAT = WebGLConstant.REPEAT,

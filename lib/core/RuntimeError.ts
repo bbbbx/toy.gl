@@ -3,8 +3,8 @@ import defined from "./defined";
 /**
  * @public
  */
-class DeveloperError extends Error{
-  readonly name = 'DeveloperError';
+class RuntimeError extends Error {
+  readonly name = 'RuntimeError';
 
   constructor(message?: string) {
     super(message);
@@ -19,10 +19,6 @@ class DeveloperError extends Error{
 
     return str;
   }
-
-  static throwInstantiationError() : never {
-    throw new DeveloperError('This function defines an interface and should not be called directly.');
-  }
 }
 
-export default DeveloperError;
+export default RuntimeError;

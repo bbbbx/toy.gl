@@ -1,5 +1,8 @@
 import Context from "./Context";
 
+/**
+ * @public
+ */
 class Renderbuffer {
   constructor(options: {
     context: Context

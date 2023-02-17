@@ -1,3 +1,5 @@
+import DeveloperError from "../core/DeveloperError";
+import defined from "../core/defined";
 import Color from "../core/Color";
 import Cartesian2 from "../math/Cartesian2";
 import Cartesian3 from "../math/Cartesian3";
@@ -5,8 +7,7 @@ import Cartesian4 from "../math/Cartesian4";
 import Matrix2 from "../math/Matrix2";
 import Matrix3 from "../math/Matrix3";
 import Matrix4 from "../math/Matrix4";
-import DeveloperError from "../core/DeveloperError";
-import defined from "../core/defined";
+import Texture from "./Texture";
 
 function createUniform(
   gl: WebGLRenderingContext | WebGL2RenderingContext,
@@ -56,8 +57,8 @@ interface Uniform {
 ////////////////////////////////////////////////////////////
 abstract class Uniform {
   name: string;
-  value;
-  _value;
+  value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4 | Texture;
+  _value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4 | Texture;
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
   _location: WebGLUniformLocation;
 
@@ -188,10 +189,7 @@ class UniformFloatVec4 extends Uniform {
 }
 ////////////////////////////////////////////////////////////
 class UniformSampler extends Uniform {
-  value: {
-    _target: number,
-    _texture: WebGLTexture,
-  }; // Texture
+  value: Texture;
   textureUnitIndex: number;
 
   constructor(

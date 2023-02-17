@@ -5,6 +5,9 @@ function returnTrue() {
   return true;
 }
 
+/**
+ * @public
+ */
 function destroyObject(object, message: string = 'This object was destroyed, i.e., destroy() was called.') {
   function throwOnDestroyed() {
     throw new DeveloperError(message);

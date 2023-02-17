@@ -1,14 +1,11 @@
-import WebGLConstant from "../core/WebGLConstant";
 import defined from "../core/defined";
 import destroyObject from "../core/destroyObject";
 import BufferUsage from "./BufferUsage";
 import Context from "./Context";
-import IndexDatatype from "../core/IndexDatatype";
-
-type BufferTarget = WebGLConstant.ELEMENT_ARRAY_BUFFER | WebGLConstant.ARRAY_BUFFER;
+import BufferTarget from "./BufferTarget";
+import getIndexDatatypeSizeInBytes from "../core/getIndexDatatypeSizeInBytes";
 
 /**
- * A GL Buffer Encapsulation.
  * @public
  */
 class Buffer {
@@ -48,7 +45,7 @@ class Buffer {
   indexDatatype: number | undefined;
 
   /**
-   * Bytes pre index, index buffer only.
+   * Bytes per index, index buffer only.
    * @readonly
    */
   bytesPerIndex: number | undefined;
@@ -74,8 +71,9 @@ class Buffer {
   }
 
   /**
-   * @remarks
-   * Use {@link Buffer.createVertexBuffer} or {@link Buffer.createIndexBuffer} to create buffer.
+   * To simplify, use {@link Buffer.createVertexBuffer} or {@link Buffer.createIndexBuffer} to create the buffer.
+   * @param options -
+   * @internal
    * */
   constructor(options: {
     context: Context,
@@ -127,7 +125,7 @@ class Buffer {
   }): Buffer {
     return new Buffer({
       context: options.context,
-      bufferTarget: WebGLConstant.ARRAY_BUFFER,
+      bufferTarget: BufferTarget.ARRAY_BUFFER,
       typedArray: options.typedArray,
       sizeInBytes: options.sizeInBytes,
       usage: options.usage,
@@ -148,10 +146,10 @@ class Buffer {
   }) : Buffer {
     const indexDatatype = options.indexDatatype;
 
-    const bytesPerIndex = IndexDatatype.getSizeInBytes(indexDatatype);
+    const bytesPerIndex = getIndexDatatypeSizeInBytes(indexDatatype);
     const buffer = new Buffer({
       context: options.context,
-      bufferTarget: WebGLConstant.ELEMENT_ARRAY_BUFFER,
+      bufferTarget: BufferTarget.ELEMENT_ARRAY_BUFFER,
       typedArray: options.typedArray,
       sizeInBytes: options.sizeInBytes,
       usage: options.usage,

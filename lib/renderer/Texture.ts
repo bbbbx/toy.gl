@@ -115,31 +115,48 @@ function isCompressedFormat(pixelFormat: PixelFormat): boolean {
 }
 
 interface TextureSource {
-  arrayBufferView: BufferSource,
-  framebuffer: Framebuffer,
+  arrayBufferView?: BufferSource,
+  framebuffer?: Framebuffer,
 }
 
 /**
  * @public
  */
 class Texture {
+  /** @internal */
   _context: Context;
+  /** @internal */
   _textureTarget: number;
+  /** @internal */
   _texture: WebGLTexture;
+  /** @internal */
   _textureFilterAnisotropic: EXT_texture_filter_anisotropic;
 
+  /** @internal */
   _id: string;
+  /** @internal */
   _internalFormat: number;
+  /** @internal */
   _width: number;
+  /** @internal */
   _height: number;
+  /** @internal */
   _pixelFormat: PixelFormat;
+  /** @internal */
   _pixelDatatype: PixelDatatype;
+  /** @internal */
   _dimensions: Cartesian2;
+  /** @internal */
   _hasMipmap: boolean;
+  /** @internal */
   _sizeInBytes: number;
+  /** @internal */
   _preMultiplyAlpha: boolean;
+  /** @internal */
   _flipY: boolean;
+  /** @internal */
   _initialized: boolean
+  /** @internal */
   _sampler: Sampler;
 
   public get sampler() : Sampler {
@@ -221,10 +238,31 @@ class Texture {
   public get sizeInByte() : number {
     return this._sizeInBytes;
   }
+  /** @internal */
   public get _target() : number {
     return this._textureTarget;
   }
 
+  /**
+   * 
+   * @param options -
+   * @example
+   * Create a 1x1 dimension (RGBA, float) texture with initial data:
+   * ```js
+   * const texture = new Texture({
+   *   context: context,
+   *   width: 1,
+   *   height: 1,
+   *   source: {
+   *     arrayBufferView: new Float32Array([
+   *        1.0, 2.0, 3.0, 4.0,
+   *     ]),
+   *   },
+   *   pixelFormat: PixelFormat.RGBA,
+   *   pixelDatatype: PixelDatatype.FLOAT,
+   * });
+   * ```
+   */
   constructor(options: {
     context: Context,
     width: number,

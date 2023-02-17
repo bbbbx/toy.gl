@@ -21,17 +21,27 @@ function attachTexture(framebuffer: Framebuffer, attachment: number, texture: Te
  * @public
  */
 class Framebuffer {
+  /** @internal */
   _context: Context;
+  /** @internal */
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
+  /** @internal */
   _framebuffer: WebGLFramebuffer;
+  /** @internal */
   _colorTextures: Texture[];
+  /** @internal */
   _colorRenderbuffers: Renderbuffer[];
+  /** @internal */
   _depthTexture: Texture;
+  /** @internal */
   _depthRenderbuffer: Renderbuffer;
+  /** @internal */
   _stencilRenderbuffer: Renderbuffer;
+  /** @internal */
   _depthStencilTexture: Texture;
+  /** @internal */
   _depthStencilRenderbuffer: Renderbuffer;
-
+  /** @internal */
   _activeColorAttachments: number[];
 
   destroyAttachments: boolean
@@ -121,16 +131,19 @@ class Framebuffer {
     this._unBind();
   }
 
+  /** @internal */
   _bind() {
     const gl = this._gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER, this._framebuffer);
   }
 
+  /** @internal */
   _unBind() {
     const gl = this._gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
+  /** @internal */
   _getActiveColorAttachments() {
     return this._activeColorAttachments;
   }

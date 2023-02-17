@@ -12,8 +12,8 @@ class ClearCommand {
   depth: number;
   stencil: number;
   renderState: RenderState; // specify scissor, `gl.clear` does not look at the viewport settings.
-  framebuffer;
-  owner;
+  framebuffer: Framebuffer;
+  owner: Object;
 
   constructor(options: {
     color?: Color,

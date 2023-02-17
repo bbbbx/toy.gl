@@ -1,24 +1,14 @@
 import DeveloperError from "../core/DeveloperError";
 import defined from "../core/defined";
-import ComponentDatatype from "../core/ComponentDatatype";
-import Context from "./Context";
 import defaultValue from "../core/defaultValue";
-import Buffer from "./Buffer";
 import destroyObject from "../core/destroyObject";
+import ComponentDatatype from "../core/ComponentDatatype";
+import validateComponentDatatype from "../core/validateComponentDatatype";
+import getComponentDatatypeSizeInBytes from "../core/getComponentDatatypeSizeInBytes";
+import Context from "./Context";
+import Buffer from "./Buffer";
+import { Attribute } from "./IVertexArray";
 import ContextLimits from "./ContextLimits";
-
-interface Attribute {
-  index?: number,
-  enabled?: boolean,
-  value?: number[],
-  vertexBuffer?: Buffer,
-  offsetInBytes?: number,
-  strideInBytes?: number,
-  componentsPerAttribute: number,
-  componentDatatype?: number,
-  normalize?: boolean,
-  instanceDivisor?: number,
-}
 
 interface VertexArrayAttribute extends Attribute {
   vertexAttrib: (gl: WebGLRenderingContext | WebGL2RenderingContext) => void,
@@ -45,7 +35,7 @@ function addAttribute(attributes: VertexArrayAttribute[], attribute: Attribute, 
     throw new DeveloperError('attribute.componentsPerAttribute must be in the range [1, 4].');
   }
 
-  if (defined(attribute.componentDatatype) && !ComponentDatatype.validate(attribute.componentDatatype)) {
+  if (defined(attribute.componentDatatype) && !validateComponentDatatype(attribute.componentDatatype)) {
     throw new DeveloperError('attribute must have a valid componentDatatype or not specify it.');
   }
 
@@ -274,6 +264,69 @@ class VertexArray {
    * 
    * @example
    * Create a vertex array with vertices from two different vertex buffers.
+   * Each vertex has a three-component position and three-component normal.
+   * ```js
+   * const positionBuffer = Buffer.createVertexBuffer({
+   *   context : context,
+   *   sizeInBytes : 12,
+   *   usage : BufferUsage.STATIC_DRAW
+   * });
+   * const normalBuffer = Buffer.createVertexBuffer({
+   *   context : context,
+   *   sizeInBytes : 12,
+   *   usage : BufferUsage.STATIC_DRAW
+   * });
+   * const attributes = [
+   *   {
+   *     index                  : 0,
+   *     vertexBuffer           : positionBuffer,
+   *     componentsPerAttribute : 3,
+   *     componentDatatype      : ComponentDatatype.FLOAT
+   *   },
+   *   {
+   *     index                  : 1,
+   *     vertexBuffer           : normalBuffer,
+   *     componentsPerAttribute : 3,
+   *     componentDatatype      : ComponentDatatype.FLOAT
+   *   }
+   * ];
+   * const va = new VertexArray({
+   *   context : context,
+   *   attributes : attributes
+   * });
+   * ```
+   * 
+   * @example
+   * Creates the same vertex layout as Example 2 using a single
+   * vertex buffer, instead of two.
+   * ```js
+   * const buffer = Buffer.createVertexBuffer({
+   *   context : context,
+   *   sizeInBytes : 24,
+   *   usage : BufferUsage.STATIC_DRAW
+   * });
+   * const attributes = [
+   *   {
+   *     vertexBuffer           : buffer,
+   *     componentsPerAttribute : 3,
+   *     componentDatatype      : ComponentDatatype.FLOAT,
+   *     offsetInBytes          : 0,
+   *     strideInBytes          : 24
+   *   },
+   *   {
+   *     vertexBuffer           : buffer,
+   *     componentsPerAttribute : 3,
+   *     componentDatatype      : ComponentDatatype.FLOAT,
+   *     normalize              : true,
+   *     offsetInBytes          : 12,
+   *     strideInBytes          : 24
+   *   }
+   * ];
+   * const va = new VertexArray({
+   *   context : context,
+   *   attributes : attributes
+   * });
+   * ```
    */
   constructor(options: {
     context: Context,
@@ -304,7 +357,7 @@ class VertexArray {
         // This assumes that each vertex buffer in the vertex array has the same number of vertices.
         const bytes =
           vaAttribute.strideInBytes ||
-          vaAttribute.componentsPerAttribute * ComponentDatatype.getSizeInBytes(vaAttribute.componentDatatype);
+          vaAttribute.componentsPerAttribute * getComponentDatatypeSizeInBytes(vaAttribute.componentDatatype);
         numberOfVertices = vaAttribute.vertexBuffer.sizeInBytes / bytes;
         break;
       }
@@ -337,7 +390,7 @@ class VertexArray {
     this._indexBuffer = indexBuffer;
   }
 
-  public getAttribute(index: number) {
+  public getAttribute(index: number) : Attribute {
     return this._attributes[index];
   }
 

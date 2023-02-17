@@ -1,3 +1,6 @@
+/**
+ * @public
+ */
 class BoundingRectangle {
   x: number;
   y: number;

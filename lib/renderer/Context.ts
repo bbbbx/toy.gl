@@ -17,6 +17,8 @@ import PixelFormat from "../core/PixelFormat";
 import getSizeInBytes from "../core/getSizeInBytes";
 import getComponentsLength from "../core/getComponentsLength";
 import PassState from "./PassState";
+import { UniformMap } from "./IDrawCommand";
+import RuntimeError from "../core/RuntimeError";
 
 function createTypedArray(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number, height: number): ArrayBufferView {
   let Constructor;
@@ -33,6 +35,27 @@ function createTypedArray(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype
 
   const size = getComponentsLength(pixelFormat) * width * height;
   return new Constructor(size);
+}
+
+function getWebGLContext(
+  canvas: HTMLCanvasElement,
+  glContextAttributes: WebGLContextAttributes,
+  requestWebgl1: boolean
+) : WebGLRenderingContext | WebGL2RenderingContext {
+
+  const webgl2Supported = typeof WebGL2RenderingContext !== 'undefined';
+  if (!requestWebgl1 && !webgl2Supported) {
+    requestWebgl1 = true;
+  }
+
+  const contextType = requestWebgl1 ? 'webgl' : 'webgl2';
+  const gl = canvas.getContext(contextType, glContextAttributes) as (WebGLRenderingContext | WebGL2RenderingContext | null);
+
+  if (!defined(gl)) {
+    throw new RuntimeError('The browser supports WebGL, but initialization failed.');
+  }
+
+  return gl;
 }
 
 const defaultClearCommand = new ClearCommand();
@@ -146,25 +169,24 @@ class Context {
   glDrawBuffers: (buffers: number[]) => void;
 
   constructor(canvas: HTMLCanvasElement, options: {
-    requestWebgl2?: boolean,
+    getWebGLStub?: (canvas: HTMLCanvasElement, glContextAttributes: WebGLContextAttributes) => WebGLRenderingContext | WebGL2RenderingContext,
+    requestWebgl1?: boolean,
     glContextAttributes?: WebGLContextAttributes,
     allowTextureFilterAnisotropic?: boolean,
   } = {}) {
     this._canvas = canvas;
+    const {
+      getWebGLStub,
+      requestWebgl1,
+      glContextAttributes = {},
+      allowTextureFilterAnisotropic = true,
+    } = defaultValue(options, {});
 
-    options.allowTextureFilterAnisotropic = defaultValue(options.allowTextureFilterAnisotropic, true);
-
-    let gl: WebGLRenderingContext | WebGL2RenderingContext = undefined;
-    let webgl2 = false;
-
-    const requestWebgl2 = options.requestWebgl2 && typeof WebGL2RenderingContext !== 'undefined';
-    if (requestWebgl2) {
-      gl = canvas.getContext('webgl2', options.glContextAttributes);
-      webgl2 = true;
-    }
-    if (!defined(gl)) {
-      gl = canvas.getContext('webgl', options.glContextAttributes);
-    }
+    const gl = defined(getWebGLStub)
+      ? getWebGLStub(canvas, glContextAttributes)
+      : getWebGLContext(canvas, glContextAttributes, requestWebgl1);
+    const webgl2Supported = typeof WebGL2RenderingContext !== 'undefined';
+    const webgl2 = webgl2Supported && gl instanceof WebGL2RenderingContext;
 
     this._gl = gl;
     this._webgl2 = webgl2;
@@ -197,7 +219,7 @@ class Context {
     this._colorBufferHalfFloat = !!getExtension(gl, ['EXT_color_buffer_half_float', 'WEBGL_color_buffer_half_float']);
     this._floatBlend = !!getExtension(gl, ['EXT_float_blend']);
 
-    const textureFilterAnisotropic = options.allowTextureFilterAnisotropic
+    const textureFilterAnisotropic = allowTextureFilterAnisotropic
       ? getExtension(gl, ['EXT_texture_filter_anisotropic', 'WEBKIT_EXT_texture_filter_anisotropic'])
       : undefined;
     this._textureFilterAnisotropic = textureFilterAnisotropic;
@@ -346,6 +368,13 @@ class Context {
     return this._textureHalfFloatLinear;
   }
 
+  public get floatingPointTexture() : boolean {
+    return this._textureFloat || this._webgl2;
+  }
+  public get halfFloatingPointTexture() : boolean {
+    return this._textureHalfFloat || this._webgl2;
+  }
+
   public get webgl2() : boolean {
     return this._webgl2;
   }
@@ -399,7 +428,7 @@ class Context {
     }
   }
 
-  public draw(drawCommand: DrawCommand, passState?: PassState, shaderProgram?: ShaderProgram, uniformMap?: Object) {
+  public draw(drawCommand: DrawCommand, passState?: PassState, shaderProgram?: ShaderProgram, uniformMap?: UniformMap) {
     passState = defaultValue(passState, this._defaultPassState);
     const framebuffer: Framebuffer = defaultValue(drawCommand.framebuffer, passState.framebuffer);
     const renderState: RenderState = defaultValue(drawCommand.renderState, this._defaultRenderState);
@@ -465,7 +494,7 @@ function beginDraw(context: Context, framebuffer: Framebuffer, passState: PassSt
  * @param shaderProgram 
  * @param uniformMap 
  */
-function continueDraw(context: Context, drawCommand: DrawCommand, shaderProgram: ShaderProgram, uniformMap: Object) {
+function continueDraw(context: Context, drawCommand: DrawCommand, shaderProgram: ShaderProgram, uniformMap: UniformMap) {
   const primitiveType = drawCommand._primitiveType;
   const va = drawCommand._vertexArray;
   let offset = drawCommand._offset;

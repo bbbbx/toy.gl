@@ -5,24 +5,31 @@ import PrimitiveType from "../core/PrimitiveType";
 import RenderState from "./RenderState";
 import ShaderProgram from "./ShaderProgram";
 import VertexArray from "./VertexArray";
-
-interface UniformMap {
-  [name: string]: () => void,
-}
+import { UniformMap } from "./IDrawCommand";
 
 /**
  * @public
  */
 class DrawCommand {
+  /** @internal */
   _vertexArray: VertexArray;
+  /** @internal */
   _count: number;
+  /** @internal */
   _offset: number;
+  /** @internal */
   _instanceCount: number;
+  /** @internal */
   _shaderProgram: ShaderProgram;
+  /** @internal */
   _uniformMap: UniformMap;
+  /** @internal */
   _renderState: RenderState;
+  /** @internal */
   _framebuffer: Framebuffer;
+  /** @internal */
   _primitiveType: PrimitiveType;
+  /** @internal */
   _owner: any;
 
   dirty: boolean;

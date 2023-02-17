@@ -1,8 +1,11 @@
-import ShaderSource from "./ShaderSource";
 import defined from "../core/defined";
+import destroyObject from "../core/destroyObject";
+import ShaderSource from "./ShaderSource";
+import Context from "./Context";
 import { createUniform, Uniform, UniformSampler } from "./createUniform";
 import { AttributeLocations } from "./IShaderProgram";
 import { CachedShader } from "./IShaderCache";
+import { UniformMap } from "./IDrawCommand";
 
 function handleUniformPrecisionMismatches(vertexShaderText: string, fragmentShaderText: string) {
   const duplicateUniformNames = {};
@@ -18,19 +21,29 @@ let nextShaderProgramId = 0;
  * @public
  */
 class ShaderProgram {
+  /** @internal */
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
+  /** @internal */
   _program: WebGLProgram;
+  /** @internal */
   _cachedShader: CachedShader;
 
   maximumTextureUnitIndex: number;
 
+  /** @internal */
   _vertexShaderSource: ShaderSource;
+  /** @internal */
   _vertexShaderText: string;
+  /** @internal */
   _fragmentShaderSource: ShaderSource;
+  /** @internal */
   _fragmentShaderText: string;
 
+  /** @internal */
   _attributeLocations: AttributeLocations;
+  /** @internal */
   _numberOfVertexAttributes: number;
+  /** @internal */
   _vertexAttributes: {
     [name: string]: {
       name: string,
@@ -38,28 +51,41 @@ class ShaderProgram {
       index: number,
     }
   };
+  /** @internal */
   _uniformsByName: {
     [name: string]: Uniform,
   };
+  /** @internal */
   _uniforms: Uniform[];
+  /** @internal */
   _automaticUniforms: any[];
+  /** @internal */
   _manualUniforms: Uniform[];
+  /** @internal */
   _duplicateUniformNames;
 
+  /** @internal */
   id: number;
 
+  /** @internal */
   _logShaderCompilation: boolean;
+  /** @internal */
   _debugShaders: WEBGL_debug_shaders;
 
+  /**
+   * Use {@link ShaderProgram.fromCache}
+   * @param options -
+   * @internal
+   */
   constructor(options: {
     gl: WebGLRenderingContext | WebGL2RenderingContext,
-    vertexShaderSource: ShaderSource,
+    vertexShaderSource?: ShaderSource,
     vertexShaderText: string,
-    fragmentShaderSource: ShaderSource,
+    fragmentShaderSource?: ShaderSource,
     fragmentShaderText: string,
-    attributeLocations: AttributeLocations,
-    logShaderCompilation: boolean,
-    debugShaders: WEBGL_debug_shaders,
+    attributeLocations?: AttributeLocations,
+    logShaderCompilation?: boolean,
+    debugShaders?: WEBGL_debug_shaders,
   }) {
     this._gl = options.gl;
     this._logShaderCompilation = options.logShaderCompilation;
@@ -83,16 +109,46 @@ class ShaderProgram {
     this.id = nextShaderProgramId++;
   }
 
+  /** @internal */
   _bind() {
     initialize(this);
     this._gl.useProgram(this._program);
   }
 
-  static fromCache(options) {
+  /**
+   * @param options -
+   * @returns 
+   * @example
+   * Create a ShaderProgram instance or get it from cache:
+   * ```js
+   * const shaderProgram = ShaderProgram.fromCache({
+   *   context: context,
+   *   vertexShaderSource: `
+   *     in vec3 aPosition;
+   *     void main() {
+   *       gl_Position = vec4(aPosition, 1.0);
+   *     }
+   *   `,
+   *   fragmentShaderSource: `
+   *     layout (location = 0) out vec4 outColor0;
+   *     void main() {
+   *       outColor0 = vec4(1.0); // or use `out_FragColor` without `out` declaration
+   *     }
+   *   `,
+   * });
+   * ```
+   */
+  static fromCache(options: {
+    context: Context,
+    vertexShaderSource: string | ShaderSource,
+    fragmentShaderSource: string | ShaderSource,
+    attributeLocations?: AttributeLocations,
+  }) {
     return options.context.shaderCache.getShaderProgram(options);
   }
 
-  _setUniforms(uniformMap: Object, uniformState, validate: boolean) {
+  /** @internal */
+  _setUniforms(uniformMap: UniformMap, uniformState, validate: boolean) {
     let len, i;
 
     if (defined(uniformMap)) {
@@ -124,6 +180,20 @@ class ShaderProgram {
     if (validate) {
 
     }
+  }
+
+  isDestroyed() {
+    return false;
+  }
+
+  destroy() {
+    this._cachedShader.cache.releaseShaderProgram(this);
+    return undefined;
+  }
+
+  finalDestroy() {
+    this._gl.deleteProgram(this._program);
+    return destroyObject(this);
   }
 }
 

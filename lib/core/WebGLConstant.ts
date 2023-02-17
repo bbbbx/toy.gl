@@ -1,3 +1,6 @@
+/**
+ * @public
+ */
 enum WebGLConstant {
   /* ClearBufferMask */
   DEPTH_BUFFER_BIT               = 0x00000100,

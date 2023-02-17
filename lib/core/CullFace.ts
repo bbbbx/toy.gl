@@ -1,5 +1,8 @@
 import WebGLConstant from "./WebGLConstant";
 
+/**
+ * @public
+ */
 enum CullFace {
   FRONT = WebGLConstant.FRONT,
   BACK = WebGLConstant.BACK,

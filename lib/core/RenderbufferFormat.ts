@@ -1,5 +1,8 @@
 import WebGLConstant from "./WebGLConstant";
 
+/**
+ * @public
+ */
 enum RenderbufferFormat {
   RGBA4 = WebGLConstant.RGBA4,
   RGBA8 = WebGLConstant.RGBA8,
