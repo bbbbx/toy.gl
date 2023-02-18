@@ -19,23 +19,23 @@ import getComponentsLength from "../core/getComponentsLength";
 import PassState from "./PassState";
 import { UniformMap } from "./IDrawCommand";
 import RuntimeError from "../core/RuntimeError";
+import ShaderSource from "./ShaderSource";
+import PrimitiveType from "../core/PrimitiveType";
+import VertexArray from "./VertexArray";
+import Buffer from "./Buffer";
+import BufferUsage from "./BufferUsage";
+import ComponentDatatype from "../core/ComponentDatatype";
+import createTypedArray from "../core/createTypedArray";
 
-function createTypedArray(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number, height: number): ArrayBufferView {
-  let Constructor;
-  const sizeInBytes = getSizeInBytes(pixelDatatype);
-  if (sizeInBytes === Uint8Array.BYTES_PER_ELEMENT) {
-    Constructor = Uint8Array;
-  } else if (sizeInBytes === Uint16Array.BYTES_PER_ELEMENT) {
-    Constructor = Uint16Array;
-  } else if (sizeInBytes === Float32Array.BYTES_PER_ELEMENT && pixelDatatype === PixelDatatype.FLOAT) {
-    Constructor = Float32Array;
-  } else {
-    Constructor = Uint32Array;
-  }
-
-  const size = getComponentsLength(pixelFormat) * width * height;
-  return new Constructor(size);
+const ViewportQuadVS = /* glsl */`
+in vec2 aPosition;
+in vec2 aUV;
+out vec2 vUV;
+void main() {
+  gl_Position = vec4(aPosition, 0.0, 1.0);
+  vUV = aUV;
 }
+`;
 
 function getWebGLContext(
   canvas: HTMLCanvasElement,
@@ -81,7 +81,14 @@ class Context {
   _textureCache: TextureCache;
 
   /** @internal */
+  cache: {
+    viewportQuad_vertexArray?: VertexArray
+  } = {};
+
+  /** @internal */
   _standardDerivatives: boolean;
+  /** @internal */
+  _shaderTextureLod: boolean;
   /** @internal */
   _depthTexture: boolean;
   /** @internal */
@@ -201,10 +208,13 @@ class Context {
     // ContextLimits.xxx = glContext.getParameter(glContext.yy);
     ContextLimits._maximumVertexAttributes = gl.getParameter(gl.MAX_VERTEX_ATTRIBS); // min: 8
     ContextLimits._maximumColorAttachments = this.drawBuffers ? gl.getParameter(WebGLConstants.MAX_COLOR_ATTACHMENTS) : 1;
+    ContextLimits._maximumRenderbufferSize = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE); // min: 1
+    ContextLimits._maximumCubeMapSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE); // min: 16
 
 
     // Extensions
     this._standardDerivatives = !!getExtension(gl, ['OES_standard_derivatives']);
+    this._shaderTextureLod = !!getExtension(gl, ['EXT_shader_texture_lod']);
     this._depthTexture = !!getExtension(gl, ['WEBGL_depth_texture', 'WEBKIT_WEBGL_depth_texture']);
     this._fragDepth = !!getExtension(gl, ['EXT_frag_depth']);
     this._elementIndexUint = !!getExtension(gl, ['OES_element_index_uint']);
@@ -384,7 +394,7 @@ class Context {
 
   /**
    * Gets an object representing the currently bound framebuffer.  While this instance is not an actual
-   * {@link Framebuffer}, it is used to represent the default framebuffer in calls to {@link Texture#fromFramebuffer}.
+   * {@link Framebuffer}, it is used to represent the default framebuffer in calls to {@link Texture.fromFramebuffer}.
    */
   public get defaultFramebuffer() : Object {
     return defaultFramebufferMarker;
@@ -478,7 +488,100 @@ class Context {
 
     return pixels;
   }
+
+  /**
+   * @public
+   * @param fragmentShaderSource -
+   * @param override -
+   * @returns 
+   */
+  public createViewportQuadCommand(fragmentShaderSource: string | ShaderSource, override: {
+    uniformMap?: UniformMap,
+    renderState?: RenderState,
+    framebuffer?: Framebuffer,
+    owner?: Object,
+  } = defaultValue.EMPTY_OBJECT) {
+    return new DrawCommand({
+      vertexArray: this.getViewportQuadVertexArray(),
+      primitiveType: PrimitiveType.TRIANGLES,
+      renderState: override.renderState,
+      shaderProgram: ShaderProgram.fromCache({
+        context: this,
+        vertexShaderSource: ViewportQuadVS,
+        fragmentShaderSource: fragmentShaderSource,
+        attributeLocations: viewportQuadAttributeLocations,
+      }),
+      uniformMap: override.uniformMap,
+      owner: override.owner,
+      framebuffer: override.framebuffer,
+    });
+  }
+
+  private getViewportQuadVertexArray() : VertexArray {
+    let vertexArray = this.cache.viewportQuad_vertexArray; 
+
+    if (!defined(vertexArray)) {
+      vertexArray = new VertexArray({
+        context: this,
+        attributes: [
+          {
+            index: 0,
+            enabled: true,
+            vertexBuffer: Buffer.createVertexBuffer({
+              context: this,
+              typedArray: new Float32Array([
+                -1.0, -1.0,
+                1.0, -1.0,
+                1.0, 1.0,
+                -1.0, 1.0
+              ]),
+              usage: BufferUsage.STATIC_DRAW,
+            }),
+            componentsPerAttribute: 2,
+            componentDatatype: ComponentDatatype.FLOAT,
+            offsetInBytes: 0,
+            strideInBytes: 0,
+            instanceDivisor: 0,
+          },
+          {
+            index: 1,
+            enabled: true,
+            vertexBuffer: Buffer.createVertexBuffer({
+              context: this,
+              typedArray: new Float32Array([
+                0.0, 0.0,
+                1.0, 0.0,
+                1.0, 1.0,
+                0.0, 1.0
+              ]),
+              usage: BufferUsage.STATIC_DRAW,
+            }),
+            componentsPerAttribute: 2,
+            componentDatatype: ComponentDatatype.FLOAT,
+            offsetInBytes: 0,
+            strideInBytes: 0,
+            instanceDivisor: 0,
+          }
+        ],
+        indexBuffer: Buffer.createIndexBuffer({
+          context: this,
+          indexDatatype: ComponentDatatype.UNSIGNED_SHORT,
+          typedArray: new Uint16Array([ 0, 1, 2, 0, 2, 3]),
+          usage: BufferUsage.STATIC_DRAW,
+        }),
+      });
+
+      this.cache.viewportQuad_vertexArray = vertexArray;
+    }
+
+    return vertexArray;
+  }
 }
+
+const viewportQuadAttributeLocations = {
+  aPosition: 0,
+  aUV: 1,
+};
 
 /**
  * Bind framebuffer and shader program, and apply render state.

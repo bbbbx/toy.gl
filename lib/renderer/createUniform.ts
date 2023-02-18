@@ -8,6 +8,7 @@ import Matrix2 from "../math/Matrix2";
 import Matrix3 from "../math/Matrix3";
 import Matrix4 from "../math/Matrix4";
 import Texture from "./Texture";
+import CubeMap from "./CubeMap";
 
 function createUniform(
   gl: WebGLRenderingContext | WebGL2RenderingContext,
@@ -57,8 +58,8 @@ interface Uniform {
 ////////////////////////////////////////////////////////////
 abstract class Uniform {
   name: string;
-  value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4 | Texture;
-  _value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4 | Texture;
+  value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4 | Texture | CubeMap;
+  _value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4 | Texture | CubeMap;
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
   _location: WebGLUniformLocation;
 
@@ -189,7 +190,7 @@ class UniformFloatVec4 extends Uniform {
 }
 ////////////////////////////////////////////////////////////
 class UniformSampler extends Uniform {
-  value: Texture;
+  value: Texture | CubeMap;
   textureUnitIndex: number;
 
   constructor(

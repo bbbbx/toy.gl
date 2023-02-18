@@ -1,6 +1,9 @@
 import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
 
+/**
+ * @public
+ */
 class Matrix2 {
   0: number;
   1: number;
@@ -38,6 +41,15 @@ class Matrix2 {
       matrix[2] === array[offset + 2] &&
       matrix[3] === array[offset + 3]
     );
+  }
+
+  static pack(value: Matrix2, array: number[], startingIndex = 0) {
+    array[startingIndex + 0] = value[0];
+    array[startingIndex + 1] = value[1];
+    array[startingIndex + 2] = value[2];
+    array[startingIndex + 3] = value[3];
+
+    return array;
   }
 
   static clone(matrix: Matrix2, result?: Matrix2) {

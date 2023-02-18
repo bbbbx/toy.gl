@@ -4,10 +4,58 @@ function demodernizeShader(input: string, isFragmentShader: boolean): string {
   // Remove version string got GLSL 3.00
   output = output.replaceAll(/#version\s+300\s+es/g, '');
 
-  output = output.replaceAll(
-    /(texture\()/g,
-    'texture2D(' // Trailing ')' is included in the match group.
-  );
+  const funcNamesByName: { [name: string]: string } = {};
+  output.replace(/uniform\s+(sampler2D|samplerCube)\s+(\w+)\s*;/g, function (match: string, group1: 'sampler2D' | 'samplerCube', group2: string) {
+    if (group1 === 'sampler2D')
+    {
+      funcNamesByName[group2] = 'texture2D';
+    }
+    else if (group1 === 'samplerCube')
+    {
+      funcNamesByName[group2] = 'textureCube';
+    }
+    return match;
+  });
+  output = output.replace(/texture\s*\(\s*(\w+)/g, function (match: string, group1: string) {
+    return `${funcNamesByName[group1]}(${group1}`;
+  });
+
+  // Replace all textureLod calls with texture2DLodEXT/textureCubeLodEXT
+  let hasShaderTextureLod = false;
+  output = output.replace(/textureLod\s*\(\s*(\w+)/g, function (match: string, group1: string) {
+    hasShaderTextureLod = true;
+    return `${funcNamesByName[group1]}LodEXT(${group1}`;
+  });
+  // Replace all textureProjLod calls with texture2DProjLodEXT
+  output = output.replace(/textureProjLod\s*\(\s*(\w+)/g, function (match: string, group1: string) {
+    hasShaderTextureLod = true;
+    return `${funcNamesByName[group1]}ProjLodEXT(${group1}`;
+  });
+  // Replace all textureProjGrad calls with texture2DProjGradEXT
+  output = output.replace(/textureProjGrad\s*\(\s*(\w+)/g, function (match: string, group1: string) {
+    hasShaderTextureLod = true;
+    return `${funcNamesByName[group1]}ProjGradEXT(${group1}`;
+  });
+  // Replace all textureGrad calls with texture2DGradEXT/textureCubeGradEXT
+  output = output.replace(/textureGrad\s*\(\s*(\w+)/g, function (match: string, group1: string) {
+    hasShaderTextureLod = true;
+    return `${funcNamesByName[group1]}GradEXT(${group1}`;
+  });
+  if (hasShaderTextureLod) {
+    output =
+      '#ifdef GL_EXT_shader_texture_lod\n' +
+      '#extension GL_EXT_shader_texture_lod : enable\n' +
+      '#endif\n' +
+      output;
+  }
+
+  if ((/(dFdx|dFdy|fwidth)\s*\(\s*\w+\s*\)/).test(output)) {
+    output =
+      '#ifdef GL_OES_standard_derivatives\n' +
+      '#extension GL_OES_standard_derivatives : enable\n' +
+      '#endif\n' +
+      output;
+  }
 
   if (isFragmentShader) {
     // Replace the in with varying

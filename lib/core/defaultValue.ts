@@ -6,7 +6,7 @@
  * @returns Returns the first parameter if not undefined, otherwise the second parameter.
  * @public
  */
-function defaultValue<Type>(value: Type, defaultValue: Type): Type {
+function defaultValue<T>(value: T, defaultValue: T): T {
   if (value !== undefined && value !== null) {
     return value;
   }

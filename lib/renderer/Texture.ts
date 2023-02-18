@@ -12,125 +12,12 @@ import MipmapHint from "./MipmapHint";
 import Sampler from "./Sampler";
 import TextureMagnificationFilter from "./TextureMagnificationFilter";
 import TextureMinificationFilter from "./TextureMinificationFilter";
-import getSizeInBytes from "../core/getSizeInBytes";
-import getComponentsLength from "../core/getComponentsLength";
-import createTypedArray from "../core/createTypedArray";
-
-function flipYForArrayBufferView(
-  arrayBufferView: ArrayBufferView,
-  pixelFormat: PixelFormat,
-  pixelDatatype: PixelDatatype,
-  width: number,
-  height: number
-) : ArrayBufferView {
-  if (height === 1) {
-    return arrayBufferView;
-  }
-
-  const flipped = createTypedArray(pixelFormat, pixelDatatype, width, height);
-  const numberOfComponents = getComponentsLength(pixelFormat);
-  const textureWidth = width * numberOfComponents;
-  for (let i = 0; i < height; ++i) {
-    const row = i * width * numberOfComponents;
-    const flippedRow = (height - i - 1) * width * numberOfComponents;
-    for (let j = 0; j < textureWidth; ++j) {
-      flipped[flippedRow + j] = arrayBufferView[row + j];
-    }
-  }
-
-  return flipped;
-}
-
-function pixelDatatypeToWebGLConstant(pixelDatatype: PixelDatatype, context: Context) : WebGLConstants {
-  switch (pixelDatatype) {
-    case PixelDatatype.UNSIGNED_BYTE:
-      return WebGLConstants.UNSIGNED_BYTE;
-    case PixelDatatype.UNSIGNED_SHORT:
-      return WebGLConstants.UNSIGNED_SHORT;
-    case PixelDatatype.UNSIGNED_INT:
-      return WebGLConstants.UNSIGNED_INT;
-    case PixelDatatype.FLOAT:
-      return WebGLConstants.FLOAT;
-    case PixelDatatype.HALF_FLOAT:
-      return context.webgl2 ? WebGLConstants.FLOAT : WebGLConstants.HALF_FLOAT_OES;
-    case PixelDatatype.UNSIGNED_INT_24_8:
-      return WebGLConstants.UNSIGNED_INT_24_8;
-    case PixelDatatype.UNSIGNED_SHORT_4_4_4_4:
-      return WebGLConstants.UNSIGNED_SHORT_4_4_4_4;
-    case PixelDatatype.UNSIGNED_SHORT_5_5_5_1:
-      return WebGLConstants.UNSIGNED_SHORT_5_5_5_1;
-    case PixelDatatype.UNSIGNED_SHORT_5_6_5:
-      return WebGLConstants.UNSIGNED_SHORT_5_6_5;
-  }
-}
-
-function toInternalFormat(
-  pixelFormat: PixelFormat,
-  pixelDatatype: PixelDatatype,
-  context: Context
-) : number {
-  // WebGL 1 require internal format to be the same as format
-  if (!context.webgl2) {
-    return pixelFormat as number;
-  }
-
-  if (pixelFormat === PixelFormat.DEPTH_STENCIL) {
-    return WebGLConstants.DEPTH24_STENCIL8;
-  }
-
-  if (pixelFormat === PixelFormat.DEPTH_COMPONENT) {
-    if (pixelDatatype === PixelDatatype.UNSIGNED_SHORT) {
-      return WebGLConstants.DEPTH_COMPONENT16;
-    } else if (pixelDatatype === PixelDatatype.UNSIGNED_INT) {
-      return WebGLConstants.DEPTH_COMPONENT24;
-    }
-  }
-
-  if (pixelDatatype === PixelDatatype.FLOAT) {
-    switch (pixelFormat) {
-      case PixelFormat.RGBA:
-        return WebGLConstants.RGBA32F;
-      case PixelFormat.RGB:
-        return WebGLConstants.RGB32F;
-      // case PixelFormat.RG:
-      //   return WebGLConstants.RG32F;
-      // case PixelFormat.R
-      //   return WebGLConstants.R32F;
-    }
-  }
-
-  if (pixelDatatype === PixelDatatype.HALF_FLOAT) {
-    switch (pixelFormat) {
-      case PixelFormat.RGBA:
-        return WebGLConstants.RGBA16F;
-      case PixelFormat.RGB:
-        return WebGLConstants.RGB16F;
-      // case PixelFormat.RG:
-      //   return WebGLConstants.RG16F;
-      // case PixelFormat.R
-      //   return WebGLConstants.R16F;
-    }
-  }
-
-  return pixelFormat;
-}
-
-function isPacked(pixelDatatype: PixelDatatype): boolean {
-  return (
-    pixelDatatype === PixelDatatype.UNSIGNED_INT_24_8 ||
-    pixelDatatype === PixelDatatype.UNSIGNED_SHORT_4_4_4_4 ||
-    pixelDatatype === PixelDatatype.UNSIGNED_SHORT_5_5_5_1 ||
-    pixelDatatype === PixelDatatype.UNSIGNED_SHORT_5_6_5
-  );
-}
-
-function textureSizeInBytes(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number, height: number): number {
-  let componentsLength = getComponentsLength(pixelFormat);
-  if (isPacked(pixelDatatype)) {
-    componentsLength = 1;
-  }
-  return componentsLength * getSizeInBytes(pixelDatatype) * width * height;
-}
+import { TexSource } from "./ITexture";
+import toInternalFormat from "../core/toInternalFormat";
+import textureSizeInBytes from "../core/textureSizeInBytes";
+import alignmentInBytes from "../core/alignmentInBytes";
+import flipYForArrayBufferView from "../core/flipYForArrayBufferView";
+import pixelDatatypeToWebGLConstant from "../core/pixelDatatypeToWebGLConstant";
 
 function compressedTextureSizeInBytes(
   pixelFormat: PixelFormat,
@@ -166,11 +53,6 @@ function compressedTextureSizeInBytes(
   }
 }
 
-function alignmentInBytes(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number): number {
-  const mod = textureSizeInBytes(pixelFormat, pixelDatatype, width, 1) % 4;
-  return mod === 0 ? 4 : mod === 2 ? 2 : 1;
-};
-
 function isDepthFormat(pixelFormat: PixelFormat): boolean {
   return (
     pixelFormat === PixelFormat.DEPTH_COMPONENT ||
@@ -194,14 +76,6 @@ function isCompressedFormat(pixelFormat: PixelFormat): boolean {
     pixelFormat === PixelFormat.RGBA8_ETC2_EAC ||
     pixelFormat === PixelFormat.RGBA_BC7
   );
-}
-
-interface TexSource {
-  arrayBufferView?: BufferSource,
-  framebuffer?: Framebuffer,
-  xOffset?: number,              // used for framebuffer source
-  yOffset?: number,              // used for framebuffer source
-  mipLevels?: ArrayBufferView[], // start at mip level 1
 }
 
 /**
@@ -350,8 +224,8 @@ class Texture {
    */
   constructor(options: {
     context: Context,
-    width: number,
-    height: number,
+    width?: number,
+    height?: number,
     source?: TexSource | TexImageSource;
     pixelFormat?: PixelFormat,
     pixelDatatype?: PixelDatatype,
@@ -367,18 +241,10 @@ class Texture {
 
     if (defined(source)) {
       if (!defined(width)) {
-        if (source instanceof HTMLVideoElement) {
-          width = source.videoWidth;
-        } else if (source instanceof HTMLImageElement) {
-          width = source.width;
-        }
+        width = defaultValue((source as HTMLVideoElement).videoWidth, source.width);
       }
       if (!defined(height)) {
-        if (source instanceof HTMLVideoElement) {
-          height = source.videoHeight;
-        } else if (source instanceof HTMLImageElement) {
-          height = source.height;
-        }
+        height = defaultValue((source as HTMLVideoElement).videoHeight, source.height);
       }
     }
 
@@ -503,7 +369,7 @@ class Texture {
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
         if (source.framebuffer !== context.defaultFramebuffer) {
-          source.framebuffer._bind();
+          (source.framebuffer as Framebuffer)._bind();
         }
 
         gl.copyTexImage2D(
@@ -518,11 +384,9 @@ class Texture {
         );
 
         if (source.framebuffer !== context.defaultFramebuffer) {
-          source.framebuffer._unBind();
+          (source.framebuffer as Framebuffer)._unBind();
         }
       } else {  // DOM element upload
-        source = source as TexImageSource;
-
         // Only valid for DOM-Element uploads
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, preMultiplyAlpha);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
@@ -533,7 +397,7 @@ class Texture {
           internalFormat,
           pixelFormat,
           pixelDatatypeToWebGLConstant(pixelDatatype, context),
-          source
+          source as TexImageSource
         );
       }
     } else {
@@ -591,6 +455,46 @@ class Texture {
     gl.bindTexture(target, this._texture);
     gl.generateMipmap(target);
     gl.bindTexture(target, null);
+  }
+
+  /**
+   * Copy subimage of framebuffer to texture. When called without arguments,
+   * the texture is the same width and height as the framebuffer and contains its contents.
+   * @param options -
+   * @returns Texture
+   */
+  static fromFramebuffer(options: {
+    context: Context,
+    pixelFormat?: PixelFormat,
+    framebufferXOffset?: number,
+    framebufferYOffset?: number,
+    width?: number,
+    height?: number,
+    framebuffer: Framebuffer,
+  }) : Texture {
+    const context = options.context;
+    const gl = context._gl;
+
+    const pixelFormat = defaultValue(options.pixelFormat, PixelFormat.RGB);
+    const framebufferXOffset = defaultValue(options.framebufferXOffset, 0);
+    const framebufferYOffset = defaultValue(options.framebufferYOffset, 0);
+    const width = defaultValue(options.width, context.drawingBufferWidth);
+    const height = defaultValue(options.height, context.drawingBufferHeight);
+    const framebuffer = options.framebuffer;
+
+    return new Texture({
+      context: context,
+      width: width,
+      height: height,
+      pixelFormat: pixelFormat,
+      source: {
+        framebuffer: defined(framebuffer) ? framebuffer : context.defaultFramebuffer,
+        xOffset: framebufferXOffset,
+        yOffset: framebufferYOffset,
+        width: width,
+        height: height,
+      },
+    });
   }
 
   isDestroyed() {

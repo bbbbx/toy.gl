@@ -132,6 +132,22 @@ class Cartesian3 {
     result.z = cartesian.z;
     return result;
   }
+
+  static equalsArray(cartesian: Cartesian3, array: number[], offset: number) : boolean {
+    return (
+      cartesian.x === array[offset] &&
+      cartesian.y === array[offset + 1] &&
+      cartesian.z === array[offset + 2]
+    );
+  }
+
+  static pack(value: Cartesian3, array: number[], startingIndex = 0) {
+    array[startingIndex + 0] = value.x;
+    array[startingIndex + 1] = value.y;
+    array[startingIndex + 2] = value.z;
+
+    return array;
+  }
 }
 
 export default Cartesian3;

@@ -34,6 +34,17 @@ class Cartesian2 {
     result.y = cartesian.y;
     return result;
   }
+
+  static equalsArray(cartesian: Cartesian2, array: number[], offset: number) : boolean {
+    return cartesian.x === array[offset] && cartesian.y === array[offset + 1];
+  }
+
+  static pack(value: Cartesian2, array: number[], startingIndex: number = 0) {
+    array[startingIndex + 0] = value.x;
+    array[startingIndex + 1] = value.y;
+
+    return array;
+  }
 }
 
 export default Cartesian2;

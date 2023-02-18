@@ -51,6 +51,24 @@ class Cartesian4 {
     result.w = cartesian.w;
     return result;
   }
+
+  static equalsArray(cartesian: Cartesian4, array: number[], offset: number) : boolean {
+    return (
+      cartesian.x === array[offset] &&
+      cartesian.y === array[offset + 1] &&
+      cartesian.z === array[offset + 2] &&
+      cartesian.w === array[offset + 3]
+    );
+  }
+
+  static pack(value: Cartesian4, array: number[], startingIndex = 0) : number[] {
+    array[startingIndex + 0] = value.x;
+    array[startingIndex + 1] = value.y;
+    array[startingIndex + 2] = value.z;
+    array[startingIndex + 3] = value.w;
+
+    return array;
+  }
 }
 
 export default Cartesian4;

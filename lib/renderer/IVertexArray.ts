@@ -1,6 +1,9 @@
 import ComponentDatatype from "../core/ComponentDatatype";
 import Buffer from "./Buffer";
 
+/**
+ * @internal
+ */
 interface Attribute {
   index?: number,
   enabled?: boolean,

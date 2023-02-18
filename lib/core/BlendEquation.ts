@@ -1,5 +1,8 @@
 import WebGLConstants from "./WebGLConstants";
 
+/**
+ * @public
+ */
 enum BlendEquation {
   ADD = WebGLConstants.FUNC_ADD,
   SUBTRACT = WebGLConstants.FUNC_SUBTRACT,

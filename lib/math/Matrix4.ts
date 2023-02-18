@@ -145,6 +145,27 @@ class Matrix4 {
     );
   }
 
+  static pack(value: Matrix4, array: number[], startingIndex = 0) {
+    array[startingIndex++] = value[0];
+    array[startingIndex++] = value[1];
+    array[startingIndex++] = value[2];
+    array[startingIndex++] = value[3];
+    array[startingIndex++] = value[4];
+    array[startingIndex++] = value[5];
+    array[startingIndex++] = value[6];
+    array[startingIndex++] = value[7];
+    array[startingIndex++] = value[8];
+    array[startingIndex++] = value[9];
+    array[startingIndex++] = value[10];
+    array[startingIndex++] = value[11];
+    array[startingIndex++] = value[12];
+    array[startingIndex++] = value[13];
+    array[startingIndex++] = value[14];
+    array[startingIndex++] = value[15];
+
+    return array;
+  }
+
   static toArray(matrix: Matrix4, result?: number[]) {
     if (!defined(result)) {
       return [

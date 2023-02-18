@@ -35,6 +35,24 @@ class Color {
     result.alpha = color.alpha;
     return result;
   }
+
+  static equalsArray(color: Color, array: number[], offset: number) : boolean {
+    return (
+      color.red === array[offset] &&
+      color.green === array[offset + 1] &&
+      color.blue === array[offset + 2] &&
+      color.alpha === array[offset + 3]
+    );
+  }
+
+  static pack(value: Color, array: number[], startingIndex = 0) {
+    array[startingIndex + 0] = value.red;
+    array[startingIndex + 1] = value.green;
+    array[startingIndex + 2] = value.blue;
+    array[startingIndex + 3] = value.alpha;
+
+    return array;
+  }
 }
 
 export default Color;

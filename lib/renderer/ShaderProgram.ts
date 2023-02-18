@@ -6,6 +6,7 @@ import { createUniform, Uniform, UniformSampler } from "./createUniform";
 import { AttributeLocations } from "./IShaderProgram";
 import { CachedShader } from "./IShaderCache";
 import { UniformMap } from "./IDrawCommand";
+import { createUniformArray, UniformArray, UniformArraySampler } from "./createUniformArray";
 
 function handleUniformPrecisionMismatches(vertexShaderText: string, fragmentShaderText: string) {
   const duplicateUniformNames = {};
@@ -53,14 +54,14 @@ class ShaderProgram {
   };
   /** @internal */
   _uniformsByName: {
-    [name: string]: Uniform,
+    [name: string]: Uniform | UniformArray,
   };
   /** @internal */
-  _uniforms: Uniform[];
+  _uniforms: (Uniform | UniformArray)[];
   /** @internal */
   _automaticUniforms: any[];
   /** @internal */
-  _manualUniforms: Uniform[];
+  _manualUniforms: (Uniform | UniformArray)[];
   /** @internal */
   _duplicateUniformNames;
 
@@ -404,22 +405,25 @@ function outputSurroundingSourceCode(shaderInfoLog: string, shaderSource: string
 }
 
 function findUniforms(gl: WebGLRenderingContext | WebGL2RenderingContext, program: WebGLProgram) {
-  const uniformsByName: { [name: string]: Uniform } = {};
-  const uniforms: Uniform[] = [];
-  const samplerUniforms: UniformSampler[] = [];
+  const uniformsByName: { [name: string]: Uniform | UniformArray } = {};
+  const uniforms: (Uniform | UniformArray)[] = [];
+  const samplerUniforms: (UniformSampler | UniformArraySampler)[] = [];
 
   const numberOfUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
 
   const suffix = '[0]';
   for (let i = 0; i < numberOfUniforms; i++) {
     const activeUniform = gl.getActiveUniform(program, i);
+    /**
+     * uniform name without brackets
+     */
     const uniformName = activeUniform.name.includes(suffix)
       ? activeUniform.name.slice(0, activeUniform.name.length - suffix.length)
       : activeUniform.name;
 
     // Ignore GLSL built-in uniforms returned in Firefox
-    if (!uniformName.startsWith('gl_')) {
-      if (!activeUniform.name.includes('[')) {
+    if ( ! uniformName.startsWith('gl_') ) {
+      if ( ! activeUniform.name.includes('[') ) {
         // Single uniform
 
         const location = gl.getUniformLocation(program, uniformName);
@@ -441,7 +445,57 @@ function findUniforms(gl: WebGLRenderingContext | WebGL2RenderingContext, progra
       } else {
         // Uniform array
 
+        let uniformArray: UniformArray, locations: WebGLUniformLocation[], loc: WebGLUniformLocation;
 
+        // On some platforms - Nexus 4 in Firefox for one - an array of sampler2D ends up being represented
+        // as separate uniforms, one for each array element.  Check for and handle that case.
+        const indexOfBracket = uniformName.indexOf('[');
+        if (indexOfBracket >= 0) {
+          // We're assuming the array elements show up in numerical order - it seems to be true
+          uniformArray = uniformsByName[uniformName.slice(0, indexOfBracket)] as UniformArraySampler;
+
+          // Nexus 4 with Android 4.3 needs this check, because it reports a uniform
+          // with the strange name webgl_3467e0265d05c3c1[1] in our globe surface shader.
+          if (!defined(uniformArray)) {
+            continue;
+          }
+
+          locations = (uniformArray as UniformArraySampler)._locations;
+
+          // On the Nexus 4 in Chrome, we get one uniform per sampler, just like in Firefox,
+          // but the size is not 1 like it is in Firefox.  So if we push locations here,
+          // we'll end up adding too many locations.
+          if (locations.length <= 1) {
+            const value = uniformArray.value;
+            loc = gl.getUniformLocation(program, uniformName);
+
+            // Workaround for IE 11.0.9.  See above.
+            if (loc !== null) {
+              locations.push(loc);
+              // TODO: push unit index as Texture?
+              debugger;
+              value.push(gl.getUniform(program, loc));
+            }
+          }
+        } else {
+          locations = [];
+          for (let j = 0; j < activeUniform.size; j++) {
+            loc = gl.getUniformLocation(program, `${uniformName}[${j}]`);
+
+            // Workaround for IE 11.0.9.  See above.
+            if (loc !== null) {
+              locations.push(loc);
+            }
+          }
+
+          uniformArray = createUniformArray(gl, activeUniform, uniformName, locations);
+          uniformsByName[uniformName] = uniformArray;
+          uniforms.push(uniformArray);
+
+          if (uniformArray._setSampler) {
+            samplerUniforms.push(uniformArray as UniformArraySampler);
+          }
+        }
       }
     }
   }
@@ -453,12 +507,17 @@ function findUniforms(gl: WebGLRenderingContext | WebGL2RenderingContext, progra
   };
 }
 
-function partitionUniforms(shaderProgram: ShaderProgram, uniformsByName: { [name: string]: Uniform }) {
-  const automaticUniforms /*: {
-    uniform: Uniform
-    automaticUniform: AutomaticUniform
-  }[] */ = [];
-  const manualUniforms: Uniform[] = [];
+function partitionUniforms(
+  shaderProgram: ShaderProgram,
+  uniformsByName: {
+    [name: string]: Uniform | UniformArray,
+  },
+) {
+  const automaticUniforms: {
+    uniform: Uniform | UniformArray,
+    automaticUniform//: AutomaticUniform
+  }[] = [];
+  const manualUniforms: (Uniform | UniformArray)[] = [];
 
   for (const uniform in uniformsByName) {
     if (uniformsByName.hasOwnProperty(uniform)) {
@@ -512,7 +571,7 @@ function findVertexAttributes(
 function setSamplerUniforms(
   gl: WebGLRenderingContext | WebGL2RenderingContext,
   program: WebGLProgram,
-  samplerUniforms: UniformSampler[]
+  samplerUniforms: (UniformSampler | UniformArraySampler)[]
 ): number {
   gl.useProgram(program);
 

@@ -1,6 +1,9 @@
 import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
 
+/**
+ * @public
+ */
 class Matrix3 {
   0: number;
   1: number;
@@ -90,6 +93,20 @@ class Matrix3 {
       matrix[7] === array[offset + 7] &&
       matrix[8] === array[offset + 8]
     );
+  }
+
+  static pack(value: Matrix3, array: number[], startingIndex = 0) {
+    array[startingIndex++] = value[0];
+    array[startingIndex++] = value[1];
+    array[startingIndex++] = value[2];
+    array[startingIndex++] = value[3];
+    array[startingIndex++] = value[4];
+    array[startingIndex++] = value[5];
+    array[startingIndex++] = value[6];
+    array[startingIndex++] = value[7];
+    array[startingIndex++] = value[8];
+
+    return array;
   }
 
   static toArray(matrix: Matrix3, result?: number[]) {

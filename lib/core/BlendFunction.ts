@@ -1,5 +1,8 @@
 import WebGLConstants from "./WebGLConstants";
 
+/**
+ * @public
+ */
 enum BlendFunction {
   ZERO = WebGLConstants.ZERO,
   ONE = WebGLConstants.ONE,
