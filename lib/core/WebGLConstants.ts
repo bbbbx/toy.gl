@@ -1,7 +1,7 @@
 /**
  * @public
  */
-enum WebGLConstant {
+enum WebGLConstants {
   /* ClearBufferMask */
   DEPTH_BUFFER_BIT               = 0x00000100,
   STENCIL_BUFFER_BIT             = 0x00000400,
@@ -420,6 +420,26 @@ enum WebGLConstant {
   UNPACK_COLORSPACE_CONVERSION_WEBGL = 0x9243,
   BROWSER_DEFAULT_WEBGL          = 0x9244,
 
+  // WEBGL_compressed_texture_s3tc
+  COMPRESSED_RGB_S3TC_DXT1_EXT = 0x83f0,
+  COMPRESSED_RGBA_S3TC_DXT1_EXT = 0x83f1,
+  COMPRESSED_RGBA_S3TC_DXT3_EXT = 0x83f2,
+  COMPRESSED_RGBA_S3TC_DXT5_EXT = 0x83f3,
+
+  // WEBGL_compressed_texture_pvrtc
+  COMPRESSED_RGB_PVRTC_4BPPV1_IMG = 0x8c00,
+  COMPRESSED_RGB_PVRTC_2BPPV1_IMG = 0x8c01,
+  COMPRESSED_RGBA_PVRTC_4BPPV1_IMG = 0x8c02,
+  COMPRESSED_RGBA_PVRTC_2BPPV1_IMG = 0x8c03,
+
+  // WEBGL_compressed_texture_astc
+  COMPRESSED_RGBA_ASTC_4x4_WEBGL = 0x93b0,
+
+  // WEBGL_compressed_texture_etc1
+  COMPRESSED_RGB_ETC1_WEBGL = 0x8d64,
+
+  // EXT_texture_compression_bptc
+  COMPRESSED_RGBA_BPTC_UNORM = 0x8e8c,
 
   // WebGL2
   READ_BUFFER                                   = 0x0C02,
@@ -680,6 +700,16 @@ enum WebGLConstant {
   TRANSFORM_FEEDBACK_PAUSED                     = 0x8E23,
   TRANSFORM_FEEDBACK_ACTIVE                     = 0x8E24,
   TRANSFORM_FEEDBACK_BINDING                    = 0x8E25,
+  COMPRESSED_R11_EAC = 0x9270,
+  COMPRESSED_SIGNED_R11_EAC = 0x9271,
+  COMPRESSED_RG11_EAC = 0x9272,
+  COMPRESSED_SIGNED_RG11_EAC = 0x9273,
+  COMPRESSED_RGB8_ETC2 = 0x9274,
+  COMPRESSED_SRGB8_ETC2 = 0x9275,
+  COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 = 0x9276,
+  COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 = 0x9277,
+  COMPRESSED_RGBA8_ETC2_EAC = 0x9278,
+  COMPRESSED_SRGB8_ALPHA8_ETC2_EAC = 0x9279,
   TEXTURE_IMMUTABLE_FORMAT                      = 0x912F,
   MAX_ELEMENT_INDEX                             = 0x8D6B,
   TEXTURE_IMMUTABLE_LEVELS                      = 0x82DF,
@@ -696,4 +726,4 @@ enum WebGLConstant {
   DOUBLE = 0x140a,
 };
 
-export default WebGLConstant;
+export default WebGLConstants;

@@ -1,17 +1,17 @@
-import WebGLConstant from "./WebGLConstant";
+import WebGLConstants from "./WebGLConstants";
 
 /**
  * @public
  */
 enum StencilFunction {
-  NEVER = WebGLConstant.NEVER,
-  ALWAYS = WebGLConstant.ALWAYS,
-  LESS = WebGLConstant.LESS,
-  EQUAL = WebGLConstant.EQUAL,
-  NOTEQUAL = WebGLConstant.NOTEQUAL,
-  LESS_OR_EQUAL = WebGLConstant.LEQUAL,
-  GREATER = WebGLConstant.GREATER,
-  GREATER_OR_EQUAL = WebGLConstant.GEQUAL,
+  NEVER = WebGLConstants.NEVER,
+  ALWAYS = WebGLConstants.ALWAYS,
+  LESS = WebGLConstants.LESS,
+  EQUAL = WebGLConstants.EQUAL,
+  NOTEQUAL = WebGLConstants.NOTEQUAL,
+  LESS_OR_EQUAL = WebGLConstants.LEQUAL,
+  GREATER = WebGLConstants.GREATER,
+  GREATER_OR_EQUAL = WebGLConstants.GEQUAL,
 }
 
 export default StencilFunction;

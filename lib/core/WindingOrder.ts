@@ -1,11 +1,11 @@
-import WebGLConstant from "./WebGLConstant";
+import WebGLConstants from "./WebGLConstants";
 
 /**
  * @public
  */
 enum WindingOrder {
-  CLOCKWISE = WebGLConstant.CW,
-  COUNTER_CLOCKWISE = WebGLConstant.CCW,
+  CLOCKWISE = WebGLConstants.CW,
+  COUNTER_CLOCKWISE = WebGLConstants.CCW,
 };
 
 export default WindingOrder;

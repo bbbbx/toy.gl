@@ -1,5 +1,5 @@
 import Color from "../core/Color";
-import WebGLConstant from "../core/WebGLConstant";
+import WebGLConstants from "../core/WebGLConstants";
 import DeveloperError from "../core/DeveloperError";
 import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
@@ -59,7 +59,7 @@ function getWebGLContext(
 }
 
 const defaultClearCommand = new ClearCommand();
-
+const defaultFramebufferMarker = {};
 /**
  * @public
  */
@@ -200,7 +200,7 @@ class Context {
     
     // ContextLimits.xxx = glContext.getParameter(glContext.yy);
     ContextLimits._maximumVertexAttributes = gl.getParameter(gl.MAX_VERTEX_ATTRIBS); // min: 8
-    ContextLimits._maximumColorAttachments = this.drawBuffers ? gl.getParameter(WebGLConstant.MAX_COLOR_ATTACHMENTS) : 1;
+    ContextLimits._maximumColorAttachments = this.drawBuffers ? gl.getParameter(WebGLConstants.MAX_COLOR_ATTACHMENTS) : 1;
 
 
     // Extensions
@@ -382,6 +382,14 @@ class Context {
     return this._id;
   }
 
+  /**
+   * Gets an object representing the currently bound framebuffer.  While this instance is not an actual
+   * {@link Framebuffer}, it is used to represent the default framebuffer in calls to {@link Texture#fromFramebuffer}.
+   */
+  public get defaultFramebuffer() : Object {
+    return defaultFramebufferMarker;
+  }
+
   clear(
     clearCommand: ClearCommand = defaultClearCommand,
     passState: PassState = this._defaultPassState
@@ -538,7 +546,7 @@ function getExtension(gl: WebGLRenderingContext | WebGL2RenderingContext, names:
 let scratchBackBufferArray;
 // this check must use typeof, not defined, because defined doesn't work with undeclared variables.
 if (typeof WebGLRenderingContext !== "undefined") {
-  scratchBackBufferArray = [WebGLConstant.BACK];
+  scratchBackBufferArray = [WebGLConstants.BACK];
 }
 function bindFramebuffer(context: Context, framebuffer: Framebuffer) {
   if (framebuffer !== context._currentFramebuffer) {

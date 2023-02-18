@@ -1,4 +1,3 @@
-import WebGLConstant from "../core/WebGLConstant";
 import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
 import CullFace from "../core/CullFace";

@@ -36,7 +36,7 @@ export { default as BlendEquation } from './core/BlendEquation';
 export { default as BlendFunction } from './core/BlendFunction';
 export { default as WindingOrder } from './core/WindingOrder';
 export { default as CullFace } from './core/CullFace';
-export { default as WebGLConstant } from './core/WebGLConstant';
+export { default as WebGLConstants } from './core/WebGLConstants';
 export { default as Color } from './core/Color';
 export { default as BoundingRectangle } from './core/BoundingRectangle';
 export { default as defaultValue } from './core/defaultValue';

@@ -1,6 +1,6 @@
 import PixelDatatype from "../core/PixelDatatype";
 import PixelFormat from "../core/PixelFormat";
-import WebGLConstant from "../core/WebGLConstant";
+import WebGLConstants from "../core/WebGLConstants";
 import createGuid from "../core/createGuid";
 import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
@@ -14,6 +14,55 @@ import TextureMagnificationFilter from "./TextureMagnificationFilter";
 import TextureMinificationFilter from "./TextureMinificationFilter";
 import getSizeInBytes from "../core/getSizeInBytes";
 import getComponentsLength from "../core/getComponentsLength";
+import createTypedArray from "../core/createTypedArray";
+
+function flipYForArrayBufferView(
+  arrayBufferView: ArrayBufferView,
+  pixelFormat: PixelFormat,
+  pixelDatatype: PixelDatatype,
+  width: number,
+  height: number
+) : ArrayBufferView {
+  if (height === 1) {
+    return arrayBufferView;
+  }
+
+  const flipped = createTypedArray(pixelFormat, pixelDatatype, width, height);
+  const numberOfComponents = getComponentsLength(pixelFormat);
+  const textureWidth = width * numberOfComponents;
+  for (let i = 0; i < height; ++i) {
+    const row = i * width * numberOfComponents;
+    const flippedRow = (height - i - 1) * width * numberOfComponents;
+    for (let j = 0; j < textureWidth; ++j) {
+      flipped[flippedRow + j] = arrayBufferView[row + j];
+    }
+  }
+
+  return flipped;
+}
+
+function pixelDatatypeToWebGLConstant(pixelDatatype: PixelDatatype, context: Context) : WebGLConstants {
+  switch (pixelDatatype) {
+    case PixelDatatype.UNSIGNED_BYTE:
+      return WebGLConstants.UNSIGNED_BYTE;
+    case PixelDatatype.UNSIGNED_SHORT:
+      return WebGLConstants.UNSIGNED_SHORT;
+    case PixelDatatype.UNSIGNED_INT:
+      return WebGLConstants.UNSIGNED_INT;
+    case PixelDatatype.FLOAT:
+      return WebGLConstants.FLOAT;
+    case PixelDatatype.HALF_FLOAT:
+      return context.webgl2 ? WebGLConstants.FLOAT : WebGLConstants.HALF_FLOAT_OES;
+    case PixelDatatype.UNSIGNED_INT_24_8:
+      return WebGLConstants.UNSIGNED_INT_24_8;
+    case PixelDatatype.UNSIGNED_SHORT_4_4_4_4:
+      return WebGLConstants.UNSIGNED_SHORT_4_4_4_4;
+    case PixelDatatype.UNSIGNED_SHORT_5_5_5_1:
+      return WebGLConstants.UNSIGNED_SHORT_5_5_5_1;
+    case PixelDatatype.UNSIGNED_SHORT_5_6_5:
+      return WebGLConstants.UNSIGNED_SHORT_5_6_5;
+  }
+}
 
 function toInternalFormat(
   pixelFormat: PixelFormat,
@@ -26,40 +75,40 @@ function toInternalFormat(
   }
 
   if (pixelFormat === PixelFormat.DEPTH_STENCIL) {
-    return WebGLConstant.DEPTH24_STENCIL8;
+    return WebGLConstants.DEPTH24_STENCIL8;
   }
 
   if (pixelFormat === PixelFormat.DEPTH_COMPONENT) {
     if (pixelDatatype === PixelDatatype.UNSIGNED_SHORT) {
-      return WebGLConstant.DEPTH_COMPONENT16;
+      return WebGLConstants.DEPTH_COMPONENT16;
     } else if (pixelDatatype === PixelDatatype.UNSIGNED_INT) {
-      return WebGLConstant.DEPTH_COMPONENT24;
+      return WebGLConstants.DEPTH_COMPONENT24;
     }
   }
 
   if (pixelDatatype === PixelDatatype.FLOAT) {
     switch (pixelFormat) {
       case PixelFormat.RGBA:
-        return WebGLConstant.RGBA32F;
+        return WebGLConstants.RGBA32F;
       case PixelFormat.RGB:
-        return WebGLConstant.RGB32F;
+        return WebGLConstants.RGB32F;
       // case PixelFormat.RG:
-      //   return WebGLConstant.RG32F;
+      //   return WebGLConstants.RG32F;
       // case PixelFormat.R
-      //   return WebGLConstant.R32F;
+      //   return WebGLConstants.R32F;
     }
   }
 
   if (pixelDatatype === PixelDatatype.HALF_FLOAT) {
     switch (pixelFormat) {
       case PixelFormat.RGBA:
-        return WebGLConstant.RGBA16F;
+        return WebGLConstants.RGBA16F;
       case PixelFormat.RGB:
-        return WebGLConstant.RGB16F;
+        return WebGLConstants.RGB16F;
       // case PixelFormat.RG:
-      //   return WebGLConstant.RG16F;
+      //   return WebGLConstants.RG16F;
       // case PixelFormat.R
-      //   return WebGLConstant.R16F;
+      //   return WebGLConstants.R16F;
     }
   }
 
@@ -83,6 +132,40 @@ function textureSizeInBytes(pixelFormat: PixelFormat, pixelDatatype: PixelDataty
   return componentsLength * getSizeInBytes(pixelDatatype) * width * height;
 }
 
+function compressedTextureSizeInBytes(
+  pixelFormat: PixelFormat,
+  width: number,
+  height: number
+) : number {
+  switch (pixelFormat) {
+    case PixelFormat.RGB_DXT1:
+    case PixelFormat.RGBA_DXT1:
+    case PixelFormat.RGB_ETC1:
+    case PixelFormat.RGB8_ETC2:
+      return Math.floor((width + 3) / 4) * Math.floor((height + 3) / 4) * 8;
+
+    case PixelFormat.RGBA_DXT3:
+    case PixelFormat.RGBA_DXT5:
+    case PixelFormat.RGBA_ASTC:
+    case PixelFormat.RGBA8_ETC2_EAC:
+      return Math.floor((width + 3) / 4) * Math.floor((height + 3) / 4) * 16;
+
+    case PixelFormat.RGB_PVRTC_4BPPV1:
+    case PixelFormat.RGBA_PVRTC_4BPPV1:
+      return Math.floor((Math.max(width, 8) * Math.max(height, 8) * 4 + 7) / 8);
+
+    case PixelFormat.RGB_PVRTC_2BPPV1:
+    case PixelFormat.RGBA_PVRTC_2BPPV1:
+      return Math.floor((Math.max(width, 16) * Math.max(height, 8) * 2 + 7) / 8);
+
+    case PixelFormat.RGBA_BC7:
+      return Math.ceil(width / 4) * Math.ceil(height / 4) * 16;
+
+    default:
+      return 0;
+  }
+}
+
 function alignmentInBytes(pixelFormat: PixelFormat, pixelDatatype: PixelDatatype, width: number): number {
   const mod = textureSizeInBytes(pixelFormat, pixelDatatype, width, 1) % 4;
   return mod === 0 ? 4 : mod === 2 ? 2 : 1;
@@ -96,27 +179,29 @@ function isDepthFormat(pixelFormat: PixelFormat): boolean {
 }
 
 function isCompressedFormat(pixelFormat: PixelFormat): boolean {
-  return false;
-  // return (
-  //   pixelFormat === PixelFormat.RGB_DXT1 ||
-  //   pixelFormat === PixelFormat.RGBA_DXT1 ||
-  //   pixelFormat === PixelFormat.RGBA_DXT3 ||
-  //   pixelFormat === PixelFormat.RGBA_DXT5 ||
-  //   pixelFormat === PixelFormat.RGB_PVRTC_4BPPV1 ||
-  //   pixelFormat === PixelFormat.RGB_PVRTC_2BPPV1 ||
-  //   pixelFormat === PixelFormat.RGBA_PVRTC_4BPPV1 ||
-  //   pixelFormat === PixelFormat.RGBA_PVRTC_2BPPV1 ||
-  //   pixelFormat === PixelFormat.RGBA_ASTC ||
-  //   pixelFormat === PixelFormat.RGB_ETC1 ||
-  //   pixelFormat === PixelFormat.RGB8_ETC2 ||
-  //   pixelFormat === PixelFormat.RGBA8_ETC2_EAC ||
-  //   pixelFormat === PixelFormat.RGBA_BC7
-  // );
+  return (
+    pixelFormat === PixelFormat.RGB_DXT1 ||
+    pixelFormat === PixelFormat.RGBA_DXT1 ||
+    pixelFormat === PixelFormat.RGBA_DXT3 ||
+    pixelFormat === PixelFormat.RGBA_DXT5 ||
+    pixelFormat === PixelFormat.RGB_PVRTC_4BPPV1 ||
+    pixelFormat === PixelFormat.RGB_PVRTC_2BPPV1 ||
+    pixelFormat === PixelFormat.RGBA_PVRTC_4BPPV1 ||
+    pixelFormat === PixelFormat.RGBA_PVRTC_2BPPV1 ||
+    pixelFormat === PixelFormat.RGBA_ASTC ||
+    pixelFormat === PixelFormat.RGB_ETC1 ||
+    pixelFormat === PixelFormat.RGB8_ETC2 ||
+    pixelFormat === PixelFormat.RGBA8_ETC2_EAC ||
+    pixelFormat === PixelFormat.RGBA_BC7
+  );
 }
 
-interface TextureSource {
+interface TexSource {
   arrayBufferView?: BufferSource,
   framebuffer?: Framebuffer,
+  xOffset?: number,              // used for framebuffer source
+  yOffset?: number,              // used for framebuffer source
+  mipLevels?: ArrayBufferView[], // start at mip level 1
 }
 
 /**
@@ -267,7 +352,7 @@ class Texture {
     context: Context,
     width: number,
     height: number,
-    source?: TextureSource | HTMLVideoElement | HTMLImageElement
+    source?: TexSource | TexImageSource;
     pixelFormat?: PixelFormat,
     pixelDatatype?: PixelDatatype,
     preMultiplyAlpha?: boolean,
@@ -278,7 +363,7 @@ class Texture {
     const context = options.context;
     let width = options.width;
     let height = options.height;
-    const source = options.source;
+    let source = options.source;
 
     if (defined(source)) {
       if (!defined(width)) {
@@ -321,7 +406,7 @@ class Texture {
 
     const isCompressed = isCompressedFormat(pixelFormat);
     let unpackAlignment = 4;
-    if (defined(source) && defined((source as TextureSource).arrayBufferView) && !isCompressed) {
+    if (defined(source) && defined((source as TexSource).arrayBufferView) && !isCompressed) {
       unpackAlignment = alignmentInBytes(pixelFormat, pixelDatatype, width);
     }
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, unpackAlignment);
@@ -333,12 +418,123 @@ class Texture {
     }
 
     if (defined(source)) {
-      if (defined((source as TextureSource).arrayBufferView)) {
-        throw new Error("To be implemented.");
-      } else if (defined((source as TextureSource).framebuffer)) {
-        throw new Error("To be implemented.");
-      } else {
-        throw new Error("To be implemented.");
+      if (defined((source as TexSource).arrayBufferView)) {
+        source = source as TexSource;
+
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+        let arrayBufferView = source.arrayBufferView as ArrayBufferView;
+        let i, mipWidth, mipHeight;
+        if (isCompressed) {
+          gl.compressedTexImage2D(
+            textureTarget,
+            0,
+            internalFormat,
+            width,
+            height,
+            0,
+            arrayBufferView
+          );
+
+          if (defined(source.mipLevels)) {
+            mipWidth = width;
+            mipHeight = height;
+            for (i = 0; i < source.mipLevels.length; i++) {
+              mipWidth = Math.max(1, Math.floor(mipWidth / 2) | 0);
+              mipHeight = Math.max(1, Math.floor(mipHeight / 2) | 0);
+              gl.compressedTexImage2D(
+                textureTarget,
+                i + 1,
+                internalFormat,
+                mipWidth,
+                mipHeight,
+                0,
+                source.mipLevels[i]
+              );
+            }
+          }
+        } else {
+          if (flipY) {
+            arrayBufferView = flipYForArrayBufferView(
+              arrayBufferView,
+              pixelFormat,
+              pixelDatatype,
+              width,
+              height
+            );
+          }
+          gl.texImage2D(
+            textureTarget,
+            0,
+            internalFormat,
+            width,
+            height,
+            0,
+            pixelFormat,
+            pixelDatatypeToWebGLConstant(pixelDatatype, context),
+            arrayBufferView
+          );
+
+          if (defined(source.mipLevels)) {
+            mipWidth = width;
+            mipHeight = height;
+            for (i = 0; i < source.mipLevels.length; i++) {
+              mipWidth = Math.max(1, Math.floor(mipWidth / 2) | 0);
+              mipHeight = Math.max(1, Math.floor(mipHeight / 2) | 0);
+              gl.texImage2D(
+                textureTarget,
+                i + 1,
+                internalFormat,
+                mipWidth,
+                mipHeight,
+                0,
+                pixelFormat,
+                pixelDatatypeToWebGLConstant(pixelDatatype, context),
+                source.mipLevels[i]
+              );
+            }
+          }
+        }
+      } else if (defined((source as TexSource).framebuffer)) {
+        source = source as TexSource;
+
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+        if (source.framebuffer !== context.defaultFramebuffer) {
+          source.framebuffer._bind();
+        }
+
+        gl.copyTexImage2D(
+          textureTarget,
+          0,
+          internalFormat,
+          source.xOffset,
+          source.yOffset,
+          width,
+          height,
+          0
+        );
+
+        if (source.framebuffer !== context.defaultFramebuffer) {
+          source.framebuffer._unBind();
+        }
+      } else {  // DOM element upload
+        source = source as TexImageSource;
+
+        // Only valid for DOM-Element uploads
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, preMultiplyAlpha);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
+
+        gl.texImage2D(
+          textureTarget,
+          0,
+          internalFormat,
+          pixelFormat,
+          pixelDatatypeToWebGLConstant(pixelDatatype, context),
+          source
+        );
       }
     } else {
       gl.texImage2D(
@@ -349,7 +545,7 @@ class Texture {
         height,
         0,
         pixelFormat,
-        pixelDatatype,
+        pixelDatatypeToWebGLConstant(pixelDatatype, context),
         null
       );
       initialized = false;
@@ -358,8 +554,7 @@ class Texture {
 
     let sizeInBytes;
     if (isCompressed) {
-      // sizeInBytes = 
-      throw new Error("Method not implemented.");
+      sizeInBytes = compressedTextureSizeInBytes(pixelFormat, width, height);
     } else {
       sizeInBytes = textureSizeInBytes(pixelFormat, pixelDatatype, width, height);
     }

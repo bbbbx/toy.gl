@@ -1,12 +1,12 @@
-import WebGLConstant from "./WebGLConstant";
+import WebGLConstants from "./WebGLConstants";
 
 /**
  * @public
  */
 enum IndexDatatype {
-  UNSIGNED_BYTE = WebGLConstant.UNSIGNED_BYTE,
-  UNSIGNED_SHORT = WebGLConstant.UNSIGNED_SHORT,
-  UNSIGNED_INT = WebGLConstant.UNSIGNED_INT,
+  UNSIGNED_BYTE = WebGLConstants.UNSIGNED_BYTE,
+  UNSIGNED_SHORT = WebGLConstants.UNSIGNED_SHORT,
+  UNSIGNED_INT = WebGLConstants.UNSIGNED_INT,
 }
 
 export default IndexDatatype;

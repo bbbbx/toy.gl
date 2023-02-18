@@ -1,12 +1,12 @@
-import WebGLConstant from "../core/WebGLConstant";
+import WebGLConstants from "../core/WebGLConstants";
 
 /**
  * @public
  */
 enum TextureWrap {
-  CLAMP_TO_EDGE = WebGLConstant.CLAMP_TO_EDGE,
-  REPEAT = WebGLConstant.REPEAT,
-  MIRRORED_REPEAT = WebGLConstant.MIRRORED_REPEAT,
+  CLAMP_TO_EDGE = WebGLConstants.CLAMP_TO_EDGE,
+  REPEAT = WebGLConstants.REPEAT,
+  MIRRORED_REPEAT = WebGLConstants.MIRRORED_REPEAT,
 }
 
 export default TextureWrap;

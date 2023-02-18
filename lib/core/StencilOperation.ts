@@ -1,17 +1,17 @@
-import WebGLConstant from "./WebGLConstant";
+import WebGLConstants from "./WebGLConstants";
 
 /**
  * @public
  */
 enum StencilOperation {
-  ZERO = WebGLConstant.ZERO,
-  KEEP = WebGLConstant.KEEP,
-  REPLACE = WebGLConstant.REPLACE,
-  INCREMENT = WebGLConstant.INCR,
-  DECREMENT = WebGLConstant.DECR,
-  INVERT = WebGLConstant.INVERT,
-  INCREMENT_WRAP = WebGLConstant.INCR_WRAP,
-  DECREMENT_WRAP = WebGLConstant.DECR_WRAP,
+  ZERO = WebGLConstants.ZERO,
+  KEEP = WebGLConstants.KEEP,
+  REPLACE = WebGLConstants.REPLACE,
+  INCREMENT = WebGLConstants.INCR,
+  DECREMENT = WebGLConstants.DECR,
+  INVERT = WebGLConstants.INVERT,
+  INCREMENT_WRAP = WebGLConstants.INCR_WRAP,
+  DECREMENT_WRAP = WebGLConstants.DECR_WRAP,
 }
 
 export default StencilOperation;

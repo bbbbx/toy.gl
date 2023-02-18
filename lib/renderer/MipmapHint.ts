@@ -1,12 +1,12 @@
-import WebGLConstant from "../core/WebGLConstant";
+import WebGLConstants from "../core/WebGLConstants";
 
 /**
  * @public
  */
 enum MipmapHint {
-  DONT_CARE = WebGLConstant.DONT_CARE,
-  FASTEST = WebGLConstant.FASTEST,
-  NICEST = WebGLConstant.NICEST,
+  DONT_CARE = WebGLConstants.DONT_CARE,
+  FASTEST = WebGLConstants.FASTEST,
+  NICEST = WebGLConstants.NICEST,
 }
 
 export default MipmapHint;

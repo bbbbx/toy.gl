@@ -1,15 +1,15 @@
-import WebGLConstant from "../core/WebGLConstant";
+import WebGLConstants from "../core/WebGLConstants";
 
 /**
  * @public
  */
 enum TextureMinificationFilter {
-  NEAREST = WebGLConstant.NEAREST,
-  LINEAR = WebGLConstant.LINEAR,
-  NEAREST_MIPMAP_NEAREST = WebGLConstant.NEAREST_MIPMAP_NEAREST,
-  NEAREST_MIPMAP_LINEAR = WebGLConstant.NEAREST_MIPMAP_LINEAR,
-  LINEAR_MIPMAP_NEAREST = WebGLConstant.LINEAR_MIPMAP_NEAREST,
-  LINEAR_MIPMAP_LINEAR = WebGLConstant.LINEAR_MIPMAP_LINEAR,
+  NEAREST = WebGLConstants.NEAREST,
+  LINEAR = WebGLConstants.LINEAR,
+  NEAREST_MIPMAP_NEAREST = WebGLConstants.NEAREST_MIPMAP_NEAREST,
+  NEAREST_MIPMAP_LINEAR = WebGLConstants.NEAREST_MIPMAP_LINEAR,
+  LINEAR_MIPMAP_NEAREST = WebGLConstants.LINEAR_MIPMAP_NEAREST,
+  LINEAR_MIPMAP_LINEAR = WebGLConstants.LINEAR_MIPMAP_LINEAR,
 }
 
 export default TextureMinificationFilter;

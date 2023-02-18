@@ -1,11 +1,11 @@
-import WebGLConstant from "../core/WebGLConstant";
+import WebGLConstants from "../core/WebGLConstants";
 
 /**
  * @public
  */
 enum TextureMagnificationFilter {
-  NEAREST = WebGLConstant.NEAREST,
-  LINEAR = WebGLConstant.LINEAR,
+  NEAREST = WebGLConstants.NEAREST,
+  LINEAR = WebGLConstants.LINEAR,
 }
 
 export default TextureMagnificationFilter;

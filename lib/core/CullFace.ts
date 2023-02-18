@@ -1,12 +1,12 @@
-import WebGLConstant from "./WebGLConstant";
+import WebGLConstants from "./WebGLConstants";
 
 /**
  * @public
  */
 enum CullFace {
-  FRONT = WebGLConstant.FRONT,
-  BACK = WebGLConstant.BACK,
-  FRONT_AND_BACK = WebGLConstant.FRONT_AND_BACK,
+  FRONT = WebGLConstants.FRONT,
+  BACK = WebGLConstants.BACK,
+  FRONT_AND_BACK = WebGLConstants.FRONT_AND_BACK,
 };
 
 export default CullFace;

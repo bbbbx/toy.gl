@@ -1,17 +1,17 @@
-import WebGLConstant from "./WebGLConstant";
+import WebGLConstants from "./WebGLConstants";
 
 /**
  * @public
  */
 enum DepthFunction {
-  LESS = WebGLConstant.LESS,
-  EQUAL = WebGLConstant.EQUAL,
-  LESS_OR_EQUAL = WebGLConstant.LEQUAL,
-  GREATER = WebGLConstant.GREATER,
-  GREATER_OR_EQUAL = WebGLConstant.GEQUAL,
-  NOT_EQUAL = WebGLConstant.NOTEQUAL,
-  NEVER = WebGLConstant.NEVER,
-  ALWAYS = WebGLConstant.ALWAYS,
+  LESS = WebGLConstants.LESS,
+  EQUAL = WebGLConstants.EQUAL,
+  LESS_OR_EQUAL = WebGLConstants.LEQUAL,
+  GREATER = WebGLConstants.GREATER,
+  GREATER_OR_EQUAL = WebGLConstants.GEQUAL,
+  NOT_EQUAL = WebGLConstants.NOTEQUAL,
+  NEVER = WebGLConstants.NEVER,
+  ALWAYS = WebGLConstants.ALWAYS,
 }
 
 export default DepthFunction;
