@@ -242,7 +242,7 @@ class RenderState {
     this._applyFunctions = [];
   }
 
-  static fromCache(renderState?): RenderState {
+  static fromCache(renderState?: RenderStateConstructor): RenderState {
     const partialKey = JSON.stringify(renderState);
     let cachedState = renderStateCache[partialKey];
     if (defined(cachedState)) {
@@ -276,7 +276,7 @@ class RenderState {
     return cachedState.state;
   }
 
-  static removeFromCache(renderState) {
+  static removeFromCache(renderState: RenderStateConstructor) {
     const states = new RenderState(renderState);
     const fullKey = JSON.stringify(states);
     const fullCachedState = renderStateCache[fullKey];

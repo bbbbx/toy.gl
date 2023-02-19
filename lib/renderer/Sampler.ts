@@ -13,6 +13,8 @@ class Sampler {
   /** @internal */
   _wrapT: TextureWrap;
   /** @internal */
+  _wrapR: TextureWrap;
+  /** @internal */
   _minificationFilter: TextureMinificationFilter;
   /** @internal */
   _magnificationFilter: TextureMagnificationFilter;
@@ -22,6 +24,7 @@ class Sampler {
   static NEAREST = Object.freeze(new Sampler({
     wrapS: TextureWrap.CLAMP_TO_EDGE,
     wrapT: TextureWrap.CLAMP_TO_EDGE,
+    wrapR: TextureWrap.CLAMP_TO_EDGE,
     minificationFilter: TextureMinificationFilter.NEAREST,
     magnificationFilter: TextureMagnificationFilter.NEAREST,
   }));
@@ -33,6 +36,7 @@ class Sampler {
   constructor(options?: {
     wrapS?: TextureWrap,
     wrapT?: TextureWrap,
+    wrapR?: TextureWrap,
     minificationFilter?: TextureMinificationFilter,
     magnificationFilter?: TextureMagnificationFilter,
     maximumAnisotropy?: number
@@ -41,12 +45,14 @@ class Sampler {
 
     const wrapS = defaultValue(options.wrapS, TextureWrap.CLAMP_TO_EDGE);
     const wrapT = defaultValue(options.wrapT, TextureWrap.CLAMP_TO_EDGE);
+    const wrapR = defaultValue(options.wrapR, TextureWrap.CLAMP_TO_EDGE);
     const minificationFilter = defaultValue(options.minificationFilter, TextureMinificationFilter.LINEAR);
     const magnificationFilter = defaultValue(options.magnificationFilter, TextureMagnificationFilter.LINEAR);
     const maximumAnisotropy = defaultValue(options.maximumAnisotropy, 1.0);
 
     this._wrapS = wrapS;
     this._wrapT = wrapT;
+    this._wrapR = wrapR;
     this._minificationFilter = minificationFilter;
     this._magnificationFilter = magnificationFilter;
     this._maximumAnisotropy = maximumAnisotropy;
@@ -57,6 +63,9 @@ class Sampler {
   }
   public get wrapT() : TextureWrap {
     return this._wrapT;
+  }
+  public get wrapR() : TextureWrap {
+    return this._wrapR;
   }
   public get minificationFilter() : TextureMinificationFilter {
     return this._minificationFilter;
@@ -75,6 +84,7 @@ class Sampler {
         defined(right) &&
         left._wrapS === right._wrapS &&
         left._wrapT === right._wrapT &&
+        left._wrapR === right._wrapR &&
         left._minificationFilter === right._minificationFilter &&
         left._magnificationFilter === right._magnificationFilter &&
         left._maximumAnisotropy === right._maximumAnisotropy)

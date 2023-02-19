@@ -7,6 +7,7 @@ import Matrix3 from "../math/Matrix3";
 import Matrix4 from "../math/Matrix4";
 import Texture from "./Texture";
 import CubeMap from "./CubeMap";
+import Texture3D from "./Texture3D";
 
 /**
  * @public
@@ -23,6 +24,7 @@ type UniformMap = {
     Matrix4 |
     Texture |
     CubeMap |
+    Texture3D |
     number[] |
     Cartesian2[] |
     Cartesian3[] |
@@ -32,7 +34,8 @@ type UniformMap = {
     Matrix3[] |
     Matrix4[] |
     Texture[] |
-    CubeMap[],
+    CubeMap[] |
+    Texture3D[],
 }
 
 export {

@@ -10,6 +10,7 @@ import Matrix3 from "../math/Matrix3";
 import Matrix4 from "../math/Matrix4";
 import CubeMap from "./CubeMap";
 import Texture from "./Texture";
+import Texture3D from "./Texture3D";
 
 function createUniformArray(
   gl: WebGLRenderingContext | WebGL2RenderingContext,
@@ -28,6 +29,7 @@ function createUniformArray(
       return new UniformArrayFloatVec4(gl, activeUniform, uniformName, locations);
     case gl.SAMPLER_2D:
     case gl.SAMPLER_CUBE:
+    case (gl as WebGL2RenderingContext).SAMPLER_3D:
       return new UniformArraySampler(gl, activeUniform, uniformName, locations);
     case gl.INT:
     case gl.BOOL:
@@ -60,8 +62,8 @@ interface UniformArray {
 ///////////////////////////////////////////////////////////////////////////
 abstract class UniformArray {
   name: string;
-  value: number[] | Cartesian2[] | Cartesian3[] | Cartesian4[] | Color[] | Matrix2[] | Matrix3[] | Matrix4[] | Texture[] | CubeMap[];
-  _value: number[] | Int32Array | Float32Array | Texture[] | CubeMap[];
+  value: number[] | Cartesian2[] | Cartesian3[] | Cartesian4[] | Color[] | Matrix2[] | Matrix3[] | Matrix4[] | Texture[] | CubeMap[] | Texture3D[];
+  _value: number[] | Int32Array | Float32Array;
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
   _location: WebGLUniformLocation;
 
@@ -261,7 +263,7 @@ class UniformArrayFloatVec4 extends UniformArray {
 }
 ///////////////////////////////////////////////////////////////////////////
 class UniformArraySampler extends UniformArray {
-  value: Texture[] | CubeMap[];
+  value: Texture[] | CubeMap[] | Texture3D[];
   _value: Float32Array;
   _locations: WebGLUniformLocation[];
   textureUnitIndex: number;

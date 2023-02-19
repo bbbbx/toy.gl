@@ -1,5 +1,4 @@
 import DeveloperError from "./DeveloperError";
-import defaultValue from "./defaultValue";
 
 function returnTrue() {
   return true;

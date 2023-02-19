@@ -10,29 +10,24 @@ const ContextLimits = {
   _maximumRenderbufferSize: 0,
   /* @internal */
   _maximumCubeMapSize: 0,
+  /* @internal */
+  _maximumTextureFilterAnisotropy: 0,
 
-  maximumVertexAttributes: undefined as number,
-  maximumColorAttachments: undefined as number,
-  maximumRenderbufferSize: undefined as number,
-  maximumCubeMapSize: undefined as number,
+  get maximumVertexAttributes() : number {
+    return this._maximumVertexAttributes;
+  },
+  get maximumColorAttachments() : number {
+    return this._maximumColorAttachments;
+  },
+  get maximumRenderbufferSize() : number {
+    return this._maximumRenderbufferSize;
+  },
+  get maximumCubeMapSize() : number {
+    return this._maximumCubeMapSize;
+  },
+  get maximumTextureFilterAnisotropy() : number {
+    return this._maximumTextureFilterAnisotropy;
+  },
 };
-
-Object.defineProperties(ContextLimits, {
-  maximumVertexAttributes: {
-    get: function() {
-      return ContextLimits._maximumVertexAttributes;
-    }
-  },
-  maximumColorAttachments: {
-    get: function() {
-      return ContextLimits._maximumColorAttachments;
-    }
-  },
-  maximumRenderbufferSize: {
-    get: function() {
-      return ContextLimits._maximumRenderbufferSize;
-    }
-  },
-});
 
 export default ContextLimits;

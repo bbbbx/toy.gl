@@ -16,7 +16,6 @@ class CubeMapFace {
   _flipY: boolean;
   _initialized: boolean;
 
-  
   public get pixelFormat() : PixelFormat {
     return this._pixelFormat;
   }

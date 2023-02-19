@@ -9,7 +9,7 @@ interface TexSource {
   framebuffer?: Framebuffer | Object,
   xOffset?: number,              // used for framebuffer source
   yOffset?: number,              // used for framebuffer source
-  mipLevels?: ArrayBufferView[], // start at mip level 1
+  mipLevels?: (ArrayBufferView | null)[], // start at mip level 1
 }
 
 export {

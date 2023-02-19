@@ -229,10 +229,11 @@ class Context {
     this._colorBufferHalfFloat = !!getExtension(gl, ['EXT_color_buffer_half_float', 'WEBGL_color_buffer_half_float']);
     this._floatBlend = !!getExtension(gl, ['EXT_float_blend']);
 
-    const textureFilterAnisotropic = allowTextureFilterAnisotropic
+    const textureFilterAnisotropic : EXT_texture_filter_anisotropic = allowTextureFilterAnisotropic
       ? getExtension(gl, ['EXT_texture_filter_anisotropic', 'WEBKIT_EXT_texture_filter_anisotropic'])
       : undefined;
     this._textureFilterAnisotropic = textureFilterAnisotropic;
+    ContextLimits._maximumTextureFilterAnisotropy = defined(textureFilterAnisotropic) ? gl.getParameter(textureFilterAnisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 1.0;
 
     let glCreateVertexArray: () => WebGLVertexArrayObject | WebGLVertexArrayObjectOES;
     let glBindVertexArray: (vertexArray: WebGLVertexArrayObject | WebGLVertexArrayObjectOES) => void;
@@ -363,19 +364,22 @@ class Context {
     return this._debugShaders;
   }
   public get vertexArrayObject() : boolean {
-    return this._vertexArrayObject;
+    return this._vertexArrayObject || this._webgl2;
   }
   public get instancedArrays() : boolean {
-    return this._instancedArrays;
+    return this._instancedArrays || this._webgl2;
   }
   public get drawBuffers() : boolean {
-    return this._drawBuffers;
+    return this._drawBuffers || this._webgl2;
   }
   public get textureFloatLinear() : boolean {
     return this._textureFloatLinear;
   }
   public get textureHalfFloatLinear() : boolean {
-    return this._textureHalfFloatLinear;
+    return (
+      (this._webgl2 && this._textureFloatLinear) ||
+      (!this._webgl2 && this._textureHalfFloatLinear)
+    );
   }
 
   public get floatingPointTexture() : boolean {
@@ -383,6 +387,9 @@ class Context {
   }
   public get halfFloatingPointTexture() : boolean {
     return this._textureHalfFloat || this._webgl2;
+  }
+  public get textureFilterAnisotropic() : boolean {
+    return !!this._textureFilterAnisotropic;
   }
 
   public get webgl2() : boolean {
@@ -673,7 +680,7 @@ function bindFramebuffer(context: Context, framebuffer: Framebuffer) {
   }
 }
 
-function validateFramebuffer(context) {
+function validateFramebuffer(context: Context) {
   if (context.validateFramebuffer) {
     const gl = context._gl;
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);

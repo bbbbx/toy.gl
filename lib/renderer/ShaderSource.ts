@@ -44,6 +44,10 @@ class ShaderSource {
     return combineShader(this, true, context);
   }
 
+  /**
+   * @internal
+   * @returns 
+   */
   public getCacheKey() : string {
     const sortedDefines = this.defines.slice().sort();
     const definesKey = sortedDefines.join(',');
@@ -122,10 +126,12 @@ function combineShader(
   precision highp float;
   precision highp int;
   precision highp samplerCube;
+  ${context.webgl2 ? 'precision highp sampler3D;' : ''}
 #else
   precision mediump float;
   precision mediump int;
   precision mediump samplerCube;
+  ${context.webgl2 ? 'precision mediump sampler3D;' : ''}
   #define highp mediump
 #endif
 `;
