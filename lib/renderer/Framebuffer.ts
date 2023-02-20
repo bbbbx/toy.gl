@@ -2,6 +2,8 @@ import WebGLConstants from "../core/WebGLConstants";
 import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
 import destroyObject from "../core/destroyObject";
+import DeveloperError from "../core/DeveloperError";
+import PixelFormat from "../core/PixelFormat";
 import Context from "./Context";
 import ContextLimits from "./ContextLimits";
 import Renderbuffer from "./Renderbuffer";
@@ -32,6 +34,16 @@ function attachTexture3D(framebuffer: Framebuffer, attachment: WebGLConstants, t
   );
 }
 
+function attachRenderbuffer(framebuffer: Framebuffer, attachmentEnum: WebGLConstants, renderbuffer: Renderbuffer) {
+  const gl = framebuffer._gl;
+  gl.framebufferRenderbuffer(
+    gl.FRAMEBUFFER,
+    attachmentEnum,
+    gl.RENDERBUFFER,
+    renderbuffer._getRenderbuffer()
+  );
+}
+
 /**
  * @public
  */
@@ -59,6 +71,10 @@ class Framebuffer {
   /** @internal */
   _activeColorAttachments: number[];
 
+  /**
+   * When true, the framebuffer owns its attachments so they will be destroyed when
+   * {@link Framebuffer.destroy} is called or when a new attachment is assigned to an attachment point.
+   */
   destroyAttachments: boolean
 
   public get numberOfColorAttachments() : number {
@@ -98,13 +114,16 @@ class Framebuffer {
     this._bind();
 
     let texture: Texture | TextureAttachment | CubeMapFaceAttachment | Texture3DAttachment;
-    let renderbuffer: Renderbuffer;
     let i: number;
     let length: number;
     let attachmentEnum: WebGLConstants;
     if (defined(options.colorTextures)) {
       const textures = options.colorTextures;
       length = this._colorTextures.length = this._activeColorAttachments.length = textures.length;
+
+      if (length > maximumColorAttachments) {
+        throw new DeveloperError('The number of color attachments exceeds the number supported.');
+      }
 
       for (i = 0; i < length; i++) {
         texture = textures[i];
@@ -139,8 +158,23 @@ class Framebuffer {
       }
     }
 
+    let renderbuffer: Renderbuffer;
     if (defined(options.colorRenderbuffers)) {
-      throw new Error("Method not implemented.");
+      const renderbuffers = options.colorRenderbuffers;
+      length = this._colorRenderbuffers.length = this._activeColorAttachments.length = renderbuffers.length;
+
+      if (length > maximumColorAttachments) {
+        throw new DeveloperError('The number of color attachments exceeds the number supported.');
+      }
+
+      for (i = 0; i < length; i++) {
+        renderbuffer = renderbuffers[i];
+        attachmentEnum = this._gl.COLOR_ATTACHMENT0 + i;
+
+        attachRenderbuffer(this, attachmentEnum, renderbuffer);
+        this._activeColorAttachments[i] = attachmentEnum;
+        this._colorRenderbuffers[i] = renderbuffer;
+      }
     }
 
     if (defined(options.depthTexture)) {
@@ -151,19 +185,30 @@ class Framebuffer {
     }
 
     if (defined(options.depthRenderbuffer)) {
-      throw new Error("Method not implemented.");
+      renderbuffer = options.depthRenderbuffer;
+      attachRenderbuffer(this, gl.DEPTH_ATTACHMENT, renderbuffer);
+      this._depthRenderbuffer = renderbuffer;
     }
 
     if (defined(options.stencilRenderbuffer)) {
-      throw new Error("Method not implemented.");
+      renderbuffer = options.stencilRenderbuffer;
+      attachRenderbuffer(this, gl.STENCIL_ATTACHMENT, renderbuffer);
+      this._stencilRenderbuffer = renderbuffer;
     }
 
     if (defined(options.depthStencilTexture)) {
-      throw new Error("Method not implemented.");
+      texture = options.depthStencilTexture;
+      if (texture.pixelFormat !== PixelFormat.DEPTH_STENCIL) {
+        throw new DeveloperError('The depth-stencil pixel-format must be DEPTH_STENCIL.');
+      }
+      attachTexture(this, gl.DEPTH_STENCIL_ATTACHMENT, texture, 0);
+      this._depthStencilTexture = texture;
     }
 
     if (defined(options.depthStencilRenderbuffer)) {
-      throw new Error("Method not implemented.");
+      renderbuffer = options.depthStencilRenderbuffer;
+      attachRenderbuffer(this, gl.DEPTH_STENCIL_ATTACHMENT, renderbuffer);
+      this._depthStencilRenderbuffer = renderbuffer;
     }
 
     this._unBind();
@@ -186,17 +231,55 @@ class Framebuffer {
     return this._activeColorAttachments;
   }
 
+  /**
+   * WebGL2 only.
+   */
+  bindDraw() {
+    const gl = this._gl as WebGL2RenderingContext;
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this._framebuffer);
+  }
+
+  /**
+   * WebGL2 only.
+   */
+  bindRead() {
+    const gl = this._gl as WebGL2RenderingContext;
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this._framebuffer);
+  }
+
   getColorTexture(index: number): Texture | CubeMapFace | Texture3D {
     return this._colorTextures[index];
   }
 
-  isDestroy() {
+  isDestroyed() {
     return false;
   }
 
   destroy() {
     if (this.destroyAttachments) {
-      throw new Error("Method not implemented.");
+      const textures = this._colorTextures;
+      let length = textures.length;
+      for (let i = 0; i < length; i++) {
+        const texture = textures[i];
+        if (defined(texture)) {
+          texture.destroy();
+        }
+      }
+
+      const renderbuffers = this._colorRenderbuffers;
+      length = renderbuffers.length;
+      for (let i = 0; i < length; i++) {
+        const renderbuffer = renderbuffers[i];
+        if (defined(renderbuffer)) {
+          renderbuffer.destroy();
+        }
+      }
+
+      this._depthTexture = this._depthTexture?.destroy();
+      this._depthRenderbuffer = this._depthRenderbuffer?.destroy();
+      this._stencilRenderbuffer = this._stencilRenderbuffer?.destroy();
+      this._depthStencilTexture = this._depthStencilTexture?.destroy();
+      this._depthStencilRenderbuffer = this._depthStencilRenderbuffer?.destroy();
     }
 
     this._gl.deleteFramebuffer(this._framebuffer);

@@ -10,6 +10,7 @@ import StencilOperation from "../core/StencilOperation";
 import BlendEquation from "../core/BlendEquation";
 import BlendFunction from "../core/BlendFunction";
 import PassState from "./PassState";
+import RenderStateConstructor from "./IRenderState";
 
 let nextRenderStateId = 0;
 let renderStateCache: {
@@ -19,75 +20,9 @@ let renderStateCache: {
   }
 } = {};
 
-interface RenderStateConstructor {
-  frontFace?: WindingOrder;
-  cull?: {
-    enabled?: boolean,
-    face?: CullFace,
-  },
-  viewport?: BoundingRectangle,
-  scissorTest?: {
-    enabled?: boolean,
-    rectangle?: BoundingRectangle,
-  },
-  colorMask?: {
-    red?: boolean,
-    green?: boolean,
-    blue?: boolean,
-    alpha?: boolean,
-  },
-  depthTest?: {
-    enabled?: boolean,
-    func?: DepthFunction,
-  },
-  depthMask?: boolean,
-  depthRange?: {
-    near?: number,
-    far?: number,
-  },
-  stencilTest?: {
-    enabled?: boolean,
-    frontFunction?: StencilFunction
-    backFunction?: StencilFunction,
-    reference?: number,
-    mask?: number,
-    frontOperation?: {
-      fail?: StencilOperation,
-      zFail?: StencilOperation,
-      zPass?: StencilOperation,
-    },
-    backOperation?: {
-      fail?: StencilOperation,
-      zFail?: StencilOperation,
-      zPass?: StencilOperation,
-    },
-  },
-  stencilMask?: number,
-  blending?: {
-    enabled?: boolean,
-    color?: Color,
-    equationRgb?: BlendEquation,
-    equationAlpha?: BlendEquation,
-    functionSourceRgb?: BlendFunction,
-    functionSourceAlpha?: BlendFunction,
-    functionDestinationRgb?: BlendFunction,
-    functionDestinationAlpha?: BlendFunction,
-  },
-  sampleCoverage?: {
-    enabled?: boolean,
-    value?: number,
-    invert?: boolean,
-  },
-  polygonOffset?: {
-    enabled?: boolean,
-    factor?: number,
-    units?: number,
-  },
-  lineWidth?: number,
-}
-
 /**
  * @public
+ * A <strong>immutable</strong> object representing the GL global state.
  */
 class RenderState {
   frontFace: WindingOrder;
@@ -158,6 +93,10 @@ class RenderState {
   private id: number;
   private _applyFunctions: ((gl : WebGLRenderingContext | WebGL2RenderingContext, renderState: RenderState) => void)[][];
 
+  /**
+   * See {@link RenderState.fromCache}
+   * @param renderState - 
+   */
   constructor(renderState: RenderStateConstructor = defaultValue.EMPTY_OBJECT) {
     const rs = renderState;
 
@@ -381,7 +320,7 @@ class RenderState {
    * @param renderState -
    * @param passState -
    */
-  static apply(gl: WebGLRenderingContext | WebGL2RenderingContext, renderState: RenderState, passState) {
+  static apply(gl: WebGLRenderingContext | WebGL2RenderingContext, renderState: RenderState, passState: PassState) {
     applyFrontFace(gl, renderState);
     applyCull(gl, renderState);
     applyLineWidth(gl, renderState);

@@ -11,6 +11,7 @@ import Texture3D from "./Texture3D";
 
 /**
  * @public
+ * See {@link DrawCommand.uniformMap}.
  */
 type UniformMap = {
   [uniformName: string]: () =>

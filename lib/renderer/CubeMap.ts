@@ -13,11 +13,11 @@ import toInternalFormat from "../core/toInternalFormat";
 import Context from "./Context";
 import ContextLimits from "./ContextLimits";
 import CubeMapFace from "./CubeMapFace";
-import { TexSource } from "./ITexture";
 import MipmapHint from "./MipmapHint";
 import Sampler from "./Sampler";
 import TextureMagnificationFilter from "./TextureMagnificationFilter";
 import TextureMinificationFilter from "./TextureMinificationFilter";
+import { TexSource } from "./ITexture";
 
 /**
  * @public
@@ -103,6 +103,7 @@ class CubeMap {
   public get flipY() : boolean {
     return this._flipY;
   }
+  /** @internal */
   public get _target() : number {
     return this._textureTarget;
   }
@@ -158,12 +159,12 @@ class CubeMap {
     pixelFormat?: PixelFormat,
     pixelDatatype?: PixelDatatype,
     source?: {
-      positiveX: TexSource,
-      negativeX: TexSource,
-      positiveY: TexSource,
-      negativeY: TexSource,
-      positiveZ: TexSource,
-      negativeZ: TexSource,
+      positiveX: TexSource | TexImageSource,
+      negativeX: TexSource | TexImageSource,
+      positiveY: TexSource | TexImageSource,
+      negativeY: TexSource | TexImageSource,
+      positiveZ: TexSource | TexImageSource,
+      negativeZ: TexSource | TexImageSource,
     },
     preMultiplyAlpha?: boolean,
     flipY?: boolean,

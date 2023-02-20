@@ -7,6 +7,7 @@ import getIndexDatatypeSizeInBytes from "../core/getIndexDatatypeSizeInBytes";
 
 /**
  * @public
+ * Represents a typeless GL buffer.
  */
 class Buffer {
   /** @internal */
@@ -95,7 +96,6 @@ class Buffer {
 
     const buffer = gl.createBuffer();
     gl.bindBuffer(bufferTarget, buffer);
-    // gl.bufferData(bufferTarget, hasArray ? typedArray : sizeInBytes, usage);
     if (hasArray) {
       gl.bufferData(bufferTarget, typedArray, usage);
     } else {

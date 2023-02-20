@@ -58,8 +58,15 @@ class Cartesian3 {
     }
 
     return result;
-  };
+  }
 
+  static add(left: Cartesian3, right: Cartesian3, result: Cartesian3 = new Cartesian3()) : Cartesian3 {
+    result.x = left.x + right.x;
+    result.y = left.y + right.y;
+    result.z = left.z + right.z;
+
+    return result;
+  }
 
   static dot(left: Cartesian3, right: Cartesian3): number {
     return left.x * right.x
@@ -147,6 +154,13 @@ class Cartesian3 {
     array[startingIndex + 2] = value.z;
 
     return array;
+  }
+
+  static fromElements(x: number, y: number, z: number, result: Cartesian3 = new Cartesian3()) : Cartesian3 {
+    result.x = x;
+    result.y = y;
+    result.z = z;
+    return result;
   }
 }
 

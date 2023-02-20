@@ -1,7 +1,7 @@
 import WebGLConstants from "./WebGLConstants";
 
 /**
- * Vertex array attribute component data type.
+ * Vertex array attribute component data type, see {@link VertexArray}.
  * @public
  */
 enum ComponentDatatype {

@@ -2,7 +2,8 @@ import ComponentDatatype from "../core/ComponentDatatype";
 import Buffer from "./Buffer";
 
 /**
- * @internal
+ * @public
+ * Vertex Array Object attribute slot, see {@link VertexArray}.
  */
 interface Attribute {
   index?: number,

@@ -204,6 +204,8 @@ function setConstantAttributes(vertexArray: VertexArray, gl: WebGLRenderingConte
 
 /**
  * @public
+ * Vertex array, which defines the attributes making up a vertex, and contains an optional index buffer
+ * to select vertices for rendering.
  */
 class VertexArray {
   /** @internal */
@@ -297,7 +299,7 @@ class VertexArray {
    * ```
    * 
    * @example
-   * Creates the same vertex layout as Example 2 using a single
+   * Creates the same vertex layout as example 2 using a single
    * vertex buffer, instead of two.
    * ```js
    * const buffer = Buffer.createVertexBuffer({

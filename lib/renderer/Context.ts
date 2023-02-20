@@ -175,6 +175,11 @@ class Context {
   /** @internal */
   glDrawBuffers: (buffers: number[]) => void;
 
+  /**
+   * Create WebGL context.
+   * @param canvas - The canvas element to which the context will be associated
+   * @param options - Options to control WebGL settings for the context
+   */
   constructor(canvas: HTMLCanvasElement, options: {
     getWebGLStub?: (canvas: HTMLCanvasElement, glContextAttributes: WebGLContextAttributes) => WebGLRenderingContext | WebGL2RenderingContext,
     requestWebgl1?: boolean,

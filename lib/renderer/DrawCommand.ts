@@ -5,10 +5,12 @@ import PrimitiveType from "../core/PrimitiveType";
 import RenderState from "./RenderState";
 import ShaderProgram from "./ShaderProgram";
 import VertexArray from "./VertexArray";
+import PassState from "./PassState";
 import { UniformMap } from "./IDrawCommand";
 
 /**
  * @public
+ * Represents a command to the renderer for drawing.
  */
 class DrawCommand {
   /** @internal */
@@ -62,7 +64,7 @@ class DrawCommand {
     this.lastDirtyTime = 0;
   }
 
-  public execute(context: Context, passState?) {
+  public execute(context: Context, passState?: PassState) {
     context.draw(this, passState);
   }
 

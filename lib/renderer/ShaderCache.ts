@@ -8,6 +8,7 @@ import { CachedShader } from "./IShaderCache";
 
 /**
  * @public
+ * See {@link Context.shaderCache}
  */
 class ShaderCache {
   _context: Context;

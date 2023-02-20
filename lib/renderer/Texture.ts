@@ -457,6 +457,126 @@ class Texture {
     gl.bindTexture(target, null);
   }
 
+  copyFrom(options: {
+    xOffset?: number,
+    yOffset?: number,
+    source: {
+      width: number,
+      height: number,
+      arrayBufferView: ArrayBufferView,
+    } | TexImageSource,
+    skipColorSpaceConversion?: boolean,
+  }) {
+    const xOffset = defaultValue(options.xOffset, 0);
+    const yOffset = defaultValue(options.yOffset, 0);
+    const source = options.source;
+
+    const context = this._context;
+    const gl = context._gl;
+    const target = this._textureTarget;
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(target, this._texture);
+
+    const width = source.width;
+    const height = source.height;
+    let arrayBufferView = (source as any).arrayBufferView as ArrayBufferView;
+
+    const textureWidth = this._width;
+    const textureHeight = this._height;
+    const internalFormat = this._internalFormat;
+    const pixelFormat = this._pixelFormat;
+    const pixelDatatype = this._pixelDatatype;
+
+    const preMultiplyAlpha = this._preMultiplyAlpha;
+    const flipY = this._flipY;
+    const skipColorSpaceConversion = defaultValue(options.skipColorSpaceConversion, false);
+
+    let unpackAlignment = 4;
+    if (defined(arrayBufferView)) {
+      unpackAlignment = alignmentInBytes(pixelFormat, pixelDatatype, width);
+    }
+
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, unpackAlignment);
+
+    if (skipColorSpaceConversion) {
+      gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    } else {
+      gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.BROWSER_DEFAULT_WEBGL);
+    }
+
+    if (xOffset === 0 && yOffset === 0 && width === textureWidth && height === textureHeight) {
+      if (defined(arrayBufferView)) {
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+        if (flipY) {
+          arrayBufferView = flipYForArrayBufferView(arrayBufferView, pixelFormat, pixelDatatype, width, height);
+        }
+
+        gl.texImage2D(
+          target,
+          0,
+          internalFormat,
+          textureWidth,
+          textureHeight,
+          0,
+          pixelFormat,
+          pixelDatatypeToWebGLConstant(pixelDatatype, context),
+          arrayBufferView
+        );
+      } else {
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, preMultiplyAlpha);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
+
+        gl.texImage2D(
+          target,
+          0,
+          internalFormat,
+          pixelFormat,
+          pixelDatatypeToWebGLConstant(pixelDatatype, context),
+          source as TexImageSource
+        );
+      }
+    } else {
+      if (defined(arrayBufferView)) {
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+        if (flipY) {
+          arrayBufferView = flipYForArrayBufferView(arrayBufferView, pixelFormat, pixelDatatype, width, height);
+        }
+
+        gl.texSubImage2D(
+          target,
+          0,
+          xOffset,
+          yOffset,
+          width,
+          height,
+          pixelFormat,
+          pixelDatatypeToWebGLConstant(pixelDatatype, context),
+          arrayBufferView
+        );
+      } else {
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, preMultiplyAlpha);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
+
+        gl.texSubImage2D(
+          target,
+          0,
+          xOffset,
+          yOffset,
+          pixelFormat,
+          pixelDatatypeToWebGLConstant(pixelDatatype, context),
+          source as TexImageSource
+        );
+      }
+    }
+
+    gl.bindTexture(target, null);
+  }
+
   /**
    * Copy subimage of framebuffer to texture. When called without arguments,
    * the texture is the same width and height as the framebuffer and contains its contents.
@@ -478,8 +598,8 @@ class Texture {
     const pixelFormat = defaultValue(options.pixelFormat, PixelFormat.RGB);
     const framebufferXOffset = defaultValue(options.framebufferXOffset, 0);
     const framebufferYOffset = defaultValue(options.framebufferYOffset, 0);
-    const width = defaultValue(options.width, context.drawingBufferWidth);
-    const height = defaultValue(options.height, context.drawingBufferHeight);
+    const width = defaultValue(options.width, gl.drawingBufferWidth);
+    const height = defaultValue(options.height, gl.drawingBufferHeight);
     const framebuffer = options.framebuffer;
 
     return new Texture({

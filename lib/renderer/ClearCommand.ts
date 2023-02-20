@@ -6,6 +6,7 @@ import RenderState from "./RenderState";
 
 /**
  * @public
+ * Represents a command to the renderer for clearing a framebuffer.
  */
 class ClearCommand {
   color: Color;
@@ -15,6 +16,10 @@ class ClearCommand {
   framebuffer: Framebuffer;
   owner: Object;
 
+  /**
+   * Create a command to clear a framebuffer.
+   * @param options -
+   */
   constructor(options: {
     color?: Color,
     depth?: number,

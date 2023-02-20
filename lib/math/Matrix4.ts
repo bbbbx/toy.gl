@@ -3,7 +3,7 @@ import defined from "../core/defined";
 import Cartesian3 from "./Cartesian3";
 import Cartesian4 from "./Cartesian4";
 import Matrix3 from "./Matrix3";
-import MyMath from "./MyMath";
+import MyMath from "./Math";
 
 const scratchInverseRotation = new Matrix3();
 const scratchMatrix3Zero = new Matrix3();
@@ -733,6 +733,67 @@ class Matrix4 {
     return result;
   };
 
+  static getScale(matrix: Matrix4, result: Cartesian3) {
+    result.x = Cartesian3.magnitude(
+      Cartesian3.fromElements(matrix[0], matrix[1], matrix[2], scratchColumn)
+    );
+    result.y = Cartesian3.magnitude(
+      Cartesian3.fromElements(matrix[4], matrix[5], matrix[6], scratchColumn)
+    );
+    result.z = Cartesian3.magnitude(
+      Cartesian3.fromElements(matrix[8], matrix[9], matrix[10], scratchColumn)
+    );
+    return result;
+  }
+
+  static getRotation(matrix: Matrix4, result: Matrix3) {
+    const scale = Matrix4.getScale(matrix, scaleScratch5);
+
+    result[0] = matrix[0] / scale.x;
+    result[1] = matrix[1] / scale.x;
+    result[2] = matrix[2] / scale.x;
+  
+    result[3] = matrix[4] / scale.y;
+    result[4] = matrix[5] / scale.y;
+    result[5] = matrix[6] / scale.y;
+  
+    result[6] = matrix[8] / scale.z;
+    result[7] = matrix[9] / scale.z;
+    result[8] = matrix[10] / scale.z;
+  
+    return result;
+  }
+
+  static setRotation(matrix: Matrix4, rotation: Matrix3, result: Matrix4) {
+    const scale = Matrix4.getScale(matrix, scaleScratch4);
+
+    result[0] = rotation[0] * scale.x;
+    result[1] = rotation[1] * scale.x;
+    result[2] = rotation[2] * scale.x;
+    result[3] = matrix[3];
+
+    result[4] = rotation[3] * scale.y;
+    result[5] = rotation[4] * scale.y;
+    result[6] = rotation[5] * scale.y;
+    result[7] = matrix[7];
+
+    result[8] = rotation[6] * scale.z;
+    result[9] = rotation[7] * scale.z;
+    result[10] = rotation[8] * scale.z;
+    result[11] = matrix[11];
+
+    result[12] = matrix[12];
+    result[13] = matrix[13];
+    result[14] = matrix[14];
+    result[15] = matrix[15];
+
+    return result;
+  }
+
 }
+
+const scratchColumn = new Cartesian3();
+const scaleScratch4 = new Cartesian3();
+const scaleScratch5 = new Cartesian3();
 
 export default Matrix4;

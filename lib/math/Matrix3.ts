@@ -163,6 +163,23 @@ class Matrix3 {
     result[8] = matrix[8];
     return result;
   }
+
+  static fromRotationZ(angle: number, result = new Matrix3()) {
+    const cosAngle = Math.cos(angle);
+    const sinAngle = Math.sin(angle);
+
+    result[0] = cosAngle;
+    result[1] = sinAngle;
+    result[2] = 0.0;
+    result[3] = -sinAngle;
+    result[4] = cosAngle;
+    result[5] = 0.0;
+    result[6] = 0.0;
+    result[7] = 0.0;
+    result[8] = 1.0;
+
+    return result;
+  }
 }
 
 export default Matrix3;
