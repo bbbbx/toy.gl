@@ -8,8 +8,9 @@ import Matrix2 from "../math/Matrix2";
 import Matrix3 from "../math/Matrix3";
 import Matrix4 from "../math/Matrix4";
 import Texture from "./Texture";
-import Texture3D from "./Texture3D";
 import CubeMap from "./CubeMap";
+import Texture3D from "./Texture3D";
+import Texture2DArray from "./Texture2DArray";
 
 function createUniform(
   gl: WebGLRenderingContext | WebGL2RenderingContext,
@@ -29,6 +30,7 @@ function createUniform(
     case gl.SAMPLER_2D:
     case gl.SAMPLER_CUBE:
     case (gl as WebGL2RenderingContext).SAMPLER_3D:
+    case (gl as WebGL2RenderingContext).SAMPLER_2D_ARRAY:
       return new UniformSampler(gl, activeUniform, uniformName, location);
     case gl.INT:
     case gl.BOOL:
@@ -60,7 +62,7 @@ interface Uniform {
 ////////////////////////////////////////////////////////////
 abstract class Uniform {
   name: string;
-  value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4 | Texture | CubeMap | Texture3D;
+  value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4 | Texture | CubeMap | Texture3D | Texture2DArray;
   _value: number | Cartesian2 | Cartesian3 | Cartesian4 | Color | Matrix2 | Matrix3 | Matrix4;
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
   _location: WebGLUniformLocation;
@@ -192,7 +194,7 @@ class UniformFloatVec4 extends Uniform {
 }
 ////////////////////////////////////////////////////////////
 class UniformSampler extends Uniform {
-  value: Texture | CubeMap | Texture3D;
+  value: Texture | CubeMap | Texture3D | Texture2DArray;
   textureUnitIndex: number;
 
   constructor(

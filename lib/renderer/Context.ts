@@ -208,13 +208,17 @@ class Context {
 
     this._shaderCache = new ShaderCache(this);
     this._textureCache = new TextureCache();
-    
-    
-    // ContextLimits.xxx = glContext.getParameter(glContext.yy);
+
+
     ContextLimits._maximumVertexAttributes = gl.getParameter(gl.MAX_VERTEX_ATTRIBS); // min: 8
     ContextLimits._maximumColorAttachments = this.drawBuffers ? gl.getParameter(WebGLConstants.MAX_COLOR_ATTACHMENTS) : 1;
     ContextLimits._maximumRenderbufferSize = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE); // min: 1
+    ContextLimits._maximumTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     ContextLimits._maximumCubeMapSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE); // min: 16
+    if (webgl2) {
+      ContextLimits._maximum3DTextureSize = gl.getParameter(gl.MAX_3D_TEXTURE_SIZE);
+      ContextLimits._maximumArrayTextureLayers = gl.getParameter(gl.MAX_ARRAY_TEXTURE_LAYERS);
+    }
 
 
     // Extensions

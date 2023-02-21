@@ -8,6 +8,7 @@ import Matrix4 from "../math/Matrix4";
 import Texture from "./Texture";
 import CubeMap from "./CubeMap";
 import Texture3D from "./Texture3D";
+import Texture2DArray from "./Texture2DArray";
 
 /**
  * @public
@@ -26,6 +27,7 @@ type UniformMap = {
     Texture |
     CubeMap |
     Texture3D |
+    Texture2DArray |
     number[] |
     Cartesian2[] |
     Cartesian3[] |
@@ -36,7 +38,8 @@ type UniformMap = {
     Matrix4[] |
     Texture[] |
     CubeMap[] |
-    Texture3D[],
+    Texture3D[] |
+    Texture2DArray[];
 }
 
 export {

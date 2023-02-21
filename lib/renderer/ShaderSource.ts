@@ -127,11 +127,13 @@ function combineShader(
   precision highp int;
   precision highp samplerCube;
   ${context.webgl2 ? 'precision highp sampler3D;' : ''}
+  ${context.webgl2 ? 'precision highp sampler2DArray;' : ''}
 #else
   precision mediump float;
   precision mediump int;
   precision mediump samplerCube;
   ${context.webgl2 ? 'precision mediump sampler3D;' : ''}
+  ${context.webgl2 ? 'precision mediump sampler2DArray;' : ''}
   #define highp mediump
 #endif
 `;

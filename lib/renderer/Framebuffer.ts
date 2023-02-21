@@ -10,7 +10,8 @@ import Renderbuffer from "./Renderbuffer";
 import Texture from "./Texture";
 import CubeMapFace from "./CubeMapFace";
 import Texture3D from "./Texture3D";
-import { CubeMapFaceAttachment, Texture3DAttachment, TextureAttachment } from "./IFramebuffer";
+import Texture2DArray from "./Texture2DArray";
+import { CubeMapFaceAttachment, Texture2DArrayAttachment, Texture3DAttachment, TextureAttachment } from "./IFramebuffer";
 
 function attachTexture(framebuffer: Framebuffer, attachment: number, texture: Texture | CubeMapFace, level: number = 0) {
   const gl = framebuffer._gl;
@@ -23,7 +24,7 @@ function attachTexture(framebuffer: Framebuffer, attachment: number, texture: Te
   );
 }
 
-function attachTexture3D(framebuffer: Framebuffer, attachment: WebGLConstants, texture: Texture3D, layer: number, level: number = 0) {
+function attachTexture3D(framebuffer: Framebuffer, attachment: WebGLConstants, texture: Texture3D | Texture2DArray, layer: number, level: number = 0) {
   const gl = framebuffer._gl as WebGL2RenderingContext;
   gl.framebufferTextureLayer(
     gl.FRAMEBUFFER,
@@ -55,7 +56,7 @@ class Framebuffer {
   /** @internal */
   _framebuffer: WebGLFramebuffer;
   /** @internal */
-  _colorTextures: (Texture | CubeMapFace | Texture3D)[];
+  _colorTextures: (Texture | CubeMapFace | Texture3D | Texture2DArray)[];
   /** @internal */
   _colorRenderbuffers: Renderbuffer[];
   /** @internal */
@@ -83,7 +84,7 @@ class Framebuffer {
 
   constructor(options: {
     context: Context,
-    colorTextures?: (Texture | TextureAttachment | CubeMapFaceAttachment | Texture3DAttachment)[],
+    colorTextures?: (Texture | TextureAttachment | CubeMapFaceAttachment | Texture3DAttachment | Texture2DArrayAttachment)[],
     colorRenderbuffers?: Renderbuffer[],
     depthTexture?: Texture,
     depthRenderbuffer?: Renderbuffer,
@@ -113,7 +114,7 @@ class Framebuffer {
 
     this._bind();
 
-    let texture: Texture | TextureAttachment | CubeMapFaceAttachment | Texture3DAttachment;
+    let texture: Texture | TextureAttachment | CubeMapFaceAttachment | Texture3DAttachment | Texture2DArrayAttachment;
     let i: number;
     let length: number;
     let attachmentEnum: WebGLConstants;
@@ -151,6 +152,12 @@ class Framebuffer {
           texture = texture as Texture3DAttachment;
           attachTexture3D(this, attachmentEnum, texture.texture3D, texture.layer, texture.level);
           this._colorTextures[i] = texture.texture3D;
+          
+        } else if (defined((texture as Texture2DArrayAttachment).texture2DArray)) {
+          
+          texture = texture as Texture2DArrayAttachment;
+          attachTexture3D(this, attachmentEnum, texture.texture2DArray, texture.layer, texture.level);
+          this._colorTextures[i] = texture.texture2DArray;
 
         }
 
@@ -247,7 +254,7 @@ class Framebuffer {
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this._framebuffer);
   }
 
-  getColorTexture(index: number): Texture | CubeMapFace | Texture3D {
+  getColorTexture(index: number): Texture | CubeMapFace | Texture3D | Texture2DArray {
     return this._colorTextures[index];
   }
 

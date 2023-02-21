@@ -18,6 +18,7 @@ import textureSizeInBytes from "../core/textureSizeInBytes";
 import alignmentInBytes from "../core/alignmentInBytes";
 import flipYForArrayBufferView from "../core/flipYForArrayBufferView";
 import pixelDatatypeToWebGLConstant from "../core/pixelDatatypeToWebGLConstant";
+import isCompressedFormat from "../core/isCompressedFormat";
 
 function compressedTextureSizeInBytes(
   pixelFormat: PixelFormat,
@@ -57,24 +58,6 @@ function isDepthFormat(pixelFormat: PixelFormat): boolean {
   return (
     pixelFormat === PixelFormat.DEPTH_COMPONENT ||
     pixelFormat === PixelFormat.DEPTH_STENCIL
-  );
-}
-
-function isCompressedFormat(pixelFormat: PixelFormat): boolean {
-  return (
-    pixelFormat === PixelFormat.RGB_DXT1 ||
-    pixelFormat === PixelFormat.RGBA_DXT1 ||
-    pixelFormat === PixelFormat.RGBA_DXT3 ||
-    pixelFormat === PixelFormat.RGBA_DXT5 ||
-    pixelFormat === PixelFormat.RGB_PVRTC_4BPPV1 ||
-    pixelFormat === PixelFormat.RGB_PVRTC_2BPPV1 ||
-    pixelFormat === PixelFormat.RGBA_PVRTC_4BPPV1 ||
-    pixelFormat === PixelFormat.RGBA_PVRTC_2BPPV1 ||
-    pixelFormat === PixelFormat.RGBA_ASTC ||
-    pixelFormat === PixelFormat.RGB_ETC1 ||
-    pixelFormat === PixelFormat.RGB8_ETC2 ||
-    pixelFormat === PixelFormat.RGBA8_ETC2_EAC ||
-    pixelFormat === PixelFormat.RGBA_BC7
   );
 }
 

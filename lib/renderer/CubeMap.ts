@@ -306,7 +306,7 @@ class CubeMap {
     this._positiveZ = new CubeMapFace(context, texture, textureTarget, gl.TEXTURE_CUBE_MAP_POSITIVE_Z, internalFormat, pixelFormat, pixelDatatype, size, preMultiplyAlpha, flipY, initialized);
     this._negativeZ = new CubeMapFace(context, texture, textureTarget, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, internalFormat, pixelFormat, pixelDatatype, size, preMultiplyAlpha, flipY, initialized);
 
-    this.sampler = defaultValue(options.sampler, new Sampler());
+    this.sampler = defined(options.sampler) ? options.sampler : new Sampler();
   }
 
   public generateMipmap(hint: MipmapHint = MipmapHint.DONT_CARE) {

@@ -1,5 +1,6 @@
 import CubeMapFace from "./CubeMapFace";
 import Texture from "./Texture";
+import Texture2DArray from "./Texture2DArray";
 import Texture3D from "./Texture3D";
 
 interface TextureAttachment {
@@ -18,8 +19,15 @@ interface Texture3DAttachment {
   layer: number,
 }
 
+interface Texture2DArrayAttachment {
+  texture2DArray: Texture2DArray,
+  level: number,
+  layer: number,
+}
+
 export {
   TextureAttachment,
   CubeMapFaceAttachment,
   Texture3DAttachment,
+  Texture2DArrayAttachment,
 };
