@@ -1,4 +1,6 @@
 import defined from "../core/defined";
+import Quaternion from "./Quaternion";
+import Spherical from "./Spherical";
 
 /**
  * @public
@@ -64,6 +66,14 @@ class Cartesian3 {
     result.x = left.x + right.x;
     result.y = left.y + right.y;
     result.z = left.z + right.z;
+
+    return result;
+  }
+
+  static subtract(left: Cartesian3, right: Cartesian3, result: Cartesian3 = new Cartesian3()) : Cartesian3 {
+    result.x = left.x - right.x;
+    result.y = left.y - right.y;
+    result.z = left.z - right.z;
 
     return result;
   }
@@ -161,6 +171,48 @@ class Cartesian3 {
     result.y = y;
     result.z = z;
     return result;
+  }
+
+  public set(x: number | Cartesian3, y?: number, z?: number) : Cartesian3 {
+    if (x instanceof Cartesian3) {
+      return Cartesian3.fromElements(x.x, x.y, x.z, this);
+    } else {
+      return Cartesian3.fromElements(x, y, z, this);
+    }
+  }
+
+  public applyQuaternion( q : Quaternion ) : Cartesian3 {
+    const x = this.x, y = this.y, z = this.z;
+    const qx = q.x, qy = q.y, qz = q.z, qw = q.w;
+
+    // calculate quat * vector
+
+    const ix = qw * x + qy * z - qz * y;
+    const iy = qw * y + qz * x - qx * z;
+    const iz = qw * z + qx * y - qy * x;
+    const iw = - qx * x - qy * y - qz * z;
+
+    // calculate result * inverse quat
+
+    this.x = ix * qw + iw * - qx + iy * - qz - iz * - qy;
+    this.y = iy * qw + iw * - qy + iz * - qx - ix * - qz;
+    this.z = iz * qw + iw * - qz + ix * - qy - iy * - qx;
+
+    return this;
+  }
+
+  public setFromSphericalCoords(radius: number, phi: number, theta: number) : Cartesian3 {
+    const sinPhiRadius = Math.sin( phi ) * radius;
+
+    this.x = sinPhiRadius * Math.sin( theta );
+    this.y = Math.cos( phi ) * radius;
+    this.z = sinPhiRadius * Math.cos( theta );
+
+    return this;
+  }
+
+  public setFromSpherical(s: Spherical) : Cartesian3 {
+    return this.setFromSphericalCoords(s.radius, s.phi, s.theta);
   }
 }
 

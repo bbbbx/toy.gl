@@ -790,7 +790,60 @@ class Matrix4 {
     return result;
   }
 
+  static getColumn<T extends (Cartesian3 | Cartesian4)>(matrix: Matrix4, index: number, result: T) : T {
+    const startIndex = index * 4;
+    const x = matrix[startIndex + 0];
+    const y = matrix[startIndex + 1];
+    const z = matrix[startIndex + 2];
+    const w = matrix[startIndex + 3];
+
+    result.x = x;
+    result.y = y;
+    result.z = z;
+    if (result instanceof Cartesian4) {
+      result.w = w;
+    }
+    return result;
+  }
+
+  static lookAt(eye: Cartesian3, target: Cartesian3, up: Cartesian3, result: Matrix4) : Matrix4 {
+
+    Cartesian3.subtract(target, eye, directionScratch);
+    if (Cartesian3.magnitude(directionScratch) === 0) {
+      // eye and target are in the same position
+      directionScratch.z = 1;
+    }
+
+    Cartesian3.normalize(directionScratch, directionScratch);
+    Cartesian3.cross(directionScratch, up, rightScratch);
+
+    if (Cartesian3.magnitude(rightScratch) === 0) {
+      // up and direction are parallel
+      if ( Math.abs( up.z ) === 1 ) {
+        directionScratch.x += 0.0001;
+      } else {
+        directionScratch.z += 0.0001;
+      }
+
+      Cartesian3.normalize(directionScratch, directionScratch);
+      Cartesian3.cross(directionScratch, up, rightScratch);
+    }
+
+    Cartesian3.normalize(rightScratch, rightScratch);
+    Cartesian3.cross(rightScratch, directionScratch, upScratch);
+
+    result[0] = rightScratch.x; result[4] = directionScratch.x; result[8] = upScratch.x;
+    result[1] = rightScratch.y; result[5] = directionScratch.y; result[9] = upScratch.y;
+    result[2] = rightScratch.z; result[6] = directionScratch.z; result[10] = upScratch.z;
+
+    return result;
+  }
+
 }
+
+const directionScratch = new Cartesian3();
+const rightScratch = new Cartesian3();
+const upScratch = new Cartesian3();
 
 const scratchColumn = new Cartesian3();
 const scaleScratch4 = new Cartesian3();

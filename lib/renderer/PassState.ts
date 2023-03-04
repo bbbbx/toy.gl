@@ -3,6 +3,8 @@ import Context from "./Context";
 import Framebuffer from "./Framebuffer";
 
 /**
+ * The state for a particular rendering pass.
+ * This is used to supplement the state in a command being executed.
  * @public
  */
 class PassState {

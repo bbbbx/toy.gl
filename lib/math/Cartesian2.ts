@@ -12,6 +12,10 @@ class Cartesian2 {
     this.y = y;
   }
 
+  set(x: number, y: number) : Cartesian2 {
+    return Cartesian2.fromElements(x, y, this);
+  }
+
   static equals(left: Cartesian2, right: Cartesian2) {
     return (
       left === right ||
@@ -51,6 +55,24 @@ class Cartesian2 {
     array[startingIndex + 1] = value.y;
 
     return array;
+  }
+
+  static fromElements(x: number, y: number, result = new Cartesian2()): Cartesian2 {
+    result.x = x;
+    result.y = y;
+    return result;
+  }
+
+  static subtract(left: Cartesian2, right: Cartesian2, result: Cartesian2) : Cartesian2 {
+    result.x = left.x - right.x;
+    result.y = left.y - right.y;
+    return result;
+  }
+
+  static multiplyByScalar(cartesian: Cartesian2, scalar: number, result: Cartesian2) : Cartesian2 {
+    result.x = cartesian.x * scalar;
+    result.y = cartesian.y * scalar;
+    return result;
   }
 }
 

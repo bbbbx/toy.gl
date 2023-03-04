@@ -1,5 +1,6 @@
 import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
+import Cartesian3 from "./Cartesian3";
 
 /**
  * @public
@@ -14,6 +15,16 @@ class Matrix3 {
   6: number;
   7: number;
   8: number;
+
+  static COLUMN0ROW0 = 0;
+  static COLUMN0ROW1 = 1;
+  static COLUMN0ROW2 = 2;
+  static COLUMN1ROW0 = 3;
+  static COLUMN1ROW1 = 4;
+  static COLUMN1ROW2 = 5;
+  static COLUMN2ROW0 = 6;
+  static COLUMN2ROW1 = 7;
+  static COLUMN2ROW2 = 8;
 
   constructor(
     column0Row0?: number,
@@ -178,6 +189,19 @@ class Matrix3 {
     result[7] = 0.0;
     result[8] = 1.0;
 
+    return result;
+  }
+
+  static getElementIndex(column: number, row: number) : number {
+    return column * 3 + row;
+  }
+
+  static setColumn(matrix: Matrix3, index: number, cartesian: Cartesian3, result = matrix) : Matrix3 {
+    result = Matrix3.clone(matrix, result);
+    const startIndex = index * 3;
+    result[startIndex] = cartesian.x;
+    result[startIndex + 1] = cartesian.y;
+    result[startIndex + 2] = cartesian.z;
     return result;
   }
 }

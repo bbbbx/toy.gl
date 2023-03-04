@@ -181,6 +181,90 @@ class RenderState {
     this._applyFunctions = [];
   }
 
+  /**
+   * Validates and then finds or creates an immutable render state, which defines the pipeline
+   * state for a {@link DrawCommand} or {@link ClearCommand}. All inputs are optional.
+   * Omitted states use the default shown in the example below.
+   * @example
+   * ```js
+   * const defaults = {
+   *   frontFace: WindingOrder.COUNTER_CLOCKWISE,
+   *   cull: {
+   *     enabled: false,
+   *     face: CullFace.BACK
+   *   },
+   *   lineWidth: 1,
+   *   polygonOffset: {
+   *     enabled: false,
+   *     factor: 0,
+   *     units: 0
+   *   },
+   *   scissorTest: {
+   *     enabled: false,
+   *     rectangle: {
+   *       x: 0,
+   *       y: 0,
+   *       width: 0,
+   *       height: 0
+   *     }
+   *   },
+   *   depthTest: {
+   *     enabled: false,
+   *     func: DepthFunction.LESS
+   *   },
+   *   depthRange: {
+   *     near: 0,
+   *     far: 1
+   *   },
+   *   depthMask: true,
+   *   stencilMask: ~0,
+   *   stencilTest: {
+   *     enabled: false,
+   *     frontFunction: StencilFunction.ALWAYS,
+   *     backFunction: StencilFunction.ALWAYS,
+   *     reference: 0,
+   *     mask: ~0,
+   *     frontOperation: {
+   *       fail: StencilOperation.KEEP,
+   *       zFail: StencilOperation.KEEP,
+   *       zPass: StencilOperation.KEEP
+   *     },
+   *     backOperation: {
+   *       fail: StencilOperation.KEEP,
+   *       zFail: StencilOperation.KEEP,
+   *       zPass: StencilOperation.KEEP
+   *     }
+   *   },
+   *   blending: {
+   *     enabled: false,
+   *     color: {
+   *       red: 0.0,
+   *       green: 0.0,
+   *       blue: 0.0,
+   *       alpha: 0.0
+   *     },
+   *     equationRgb: BlendEquation.ADD,
+   *     equationAlpha: BlendEquation.ADD,
+   *     functionSourceRgb: BlendFunction.ONE,
+   *     functionSourceAlpha: BlendFunction.ONE,
+   *     functionDestinationRgb: BlendFunction.ZERO,
+   *     functionDestinationAlpha: BlendFunction.ZERO
+   *   },
+   *   colorMask: {
+   *     red: true,
+   *     green: true,
+   *     blue: true,
+   *     alpha: true
+   *   },
+   *   sampleCoverage: {
+   *     enabled: false,
+   *     value: 1.0,
+   *     invert: false
+   *   }
+   * };
+   * const rs = RenderState.fromCache(defaults);
+   * ```
+   */
   static fromCache(renderState?: RenderStateConstructor): RenderState {
     const partialKey = JSON.stringify(renderState);
     let cachedState = renderStateCache[partialKey];
@@ -307,7 +391,7 @@ class RenderState {
 
     if (
       previousRenderState !== renderState ||
-      previousPassState !== previousPassState ||
+      previousPassState !== passState ||
       previousPassState.context !== passState.context
     ) {
       applyViewport(gl, renderState, passState);

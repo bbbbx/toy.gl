@@ -24,6 +24,7 @@ export { default as CubeMapFace } from './renderer/CubeMapFace';
 export { default as Texture3D } from './renderer/Texture3D';
 export { default as Texture2DArray } from './renderer/Texture2DArray';
 export { default as Sampler } from './renderer/Sampler';
+export { default as MipmapHint } from './renderer/MipmapHint';
 export { default as TextureMinificationFilter } from './renderer/TextureMinificationFilter';
 export { default as TextureMagnificationFilter } from './renderer/TextureMagnificationFilter';
 export { default as TextureWrap } from './renderer/TextureWrap';
@@ -61,3 +62,9 @@ export { default as Cartesian4 } from './math/Cartesian4';
 export { default as Matrix2 } from './math/Matrix2';
 export { default as Matrix3 } from './math/Matrix3';
 export { default as Matrix4 } from './math/Matrix4';
+export { default as PerspectiveFrustum } from './math/PerspectiveFrustum';
+export { default as Spherical } from './math/Spherical';
+
+export { default as Camera } from './scene/Camera';
+export { default as CameraController } from './scene/CameraController';
+export { default as OrbitCameraController } from './scene/OrbitCameraController';

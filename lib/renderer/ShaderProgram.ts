@@ -7,6 +7,7 @@ import { AttributeLocations } from "./IShaderProgram";
 import { CachedShader } from "./IShaderCache";
 import { UniformMap } from "./IDrawCommand";
 import { createUniformArray, UniformArray, UniformArraySampler } from "./createUniformArray";
+import DeveloperError from "../core/DeveloperError";
 
 function handleUniformPrecisionMismatches(vertexShaderText: string, fragmentShaderText: string) {
   const duplicateUniformNames = {};
@@ -157,7 +158,11 @@ class ShaderProgram {
       len = manualUniforms.length;
       for (i = 0; i < len; i++) {
         const manualUniform = manualUniforms[i];
-        manualUniform.value = uniformMap[manualUniform.name]();
+        const getUniform = uniformMap[manualUniform.name];
+        if (!defined(getUniform)) {
+          throw new DeveloperError(`No property named "${manualUniform.name}" in DrawCommand's uniformMap.`);
+        }
+        manualUniform.value = getUniform();
       }
     }
 
