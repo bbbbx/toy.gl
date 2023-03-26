@@ -15,7 +15,7 @@ class Camera {
   up: Cartesian3 = new Cartesian3();
   right: Cartesian3 = new Cartesian3();
 
-  upAxis = new Cartesian3(0, 0, 1);
+  upAxis = new Cartesian3(0, 1, 0);
 
   viewMatrix: Matrix4 = Matrix4.clone(Matrix4.IDENTITY);
   inverseViewMatrix: Matrix4 = Matrix4.clone(Matrix4.IDENTITY);;

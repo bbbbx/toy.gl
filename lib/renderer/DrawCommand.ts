@@ -7,6 +7,9 @@ import ShaderProgram from "./ShaderProgram";
 import VertexArray from "./VertexArray";
 import PassState from "./PassState";
 import { UniformMap } from "./IDrawCommand";
+import Pass from "./Pass";
+import Matrix4 from "../math/Matrix4";
+import BoundingVolume from "../core/BoundingVolume";
 
 /**
  * @public
@@ -26,13 +29,19 @@ class DrawCommand {
   /** @internal */
   _uniformMap: UniformMap;
   /** @internal */
+  _modelMatrix: Matrix4;
+  /** @internal */
   _renderState: RenderState;
   /** @internal */
   _framebuffer: Framebuffer;
   /** @internal */
   _primitiveType: PrimitiveType;
   /** @internal */
+  _pass: Pass;
+  /** @internal */
   _owner: any;
+  /** @internal */
+  _boundingVolume: BoundingVolume;
 
   dirty: boolean;
   lastDirtyTime: number;
@@ -45,9 +54,12 @@ class DrawCommand {
     shaderProgram?: ShaderProgram,
     framebuffer?: Framebuffer,
     uniformMap?: UniformMap,
+    modelMatrix?: Matrix4,
     renderState?: RenderState,
     primitiveType?: PrimitiveType,
+    pass?: Pass,
     owner?: any,
+    boundingVolume?: BoundingVolume,
   } = defaultValue.EMPTY_OBJECT) {
     this._vertexArray = options.vertexArray;
     this._count = options.count;
@@ -56,9 +68,12 @@ class DrawCommand {
     this._shaderProgram = options.shaderProgram;
     this._framebuffer = options.framebuffer;
     this._uniformMap = options.uniformMap;
+    this._modelMatrix = options.modelMatrix;
     this._renderState = options.renderState;
     this._primitiveType = defaultValue(options.primitiveType, PrimitiveType.TRIANGLES);
+    this._pass = options.pass;
     this._owner = options.owner;
+    this._boundingVolume = options.boundingVolume;
 
     this.dirty = true;
     this.lastDirtyTime = 0;
@@ -138,6 +153,14 @@ class DrawCommand {
     }
   }
 
+  public get modelMatrix() { return this._modelMatrix; }
+  public set modelMatrix(value: Matrix4) {
+    if (this._modelMatrix !== value) {
+      this._modelMatrix = value;
+      this.dirty = true;
+    }
+  }
+
   public get renderState() : RenderState {
     return this._renderState;
   }
@@ -158,12 +181,30 @@ class DrawCommand {
     }
   }
 
+  public get pass() { return this._pass; }
+  public set pass(value: Pass) {
+    if (this._pass !== value) {
+      this.dirty = true;
+      this._pass = value;
+    }
+  }
+
   public get owner() : any {
     return this._owner;
   }
   public set owner(value : any) {
     if (this._owner !== value) {
       this._owner = value;
+      this.dirty = true;
+    }
+  }
+
+  public get boundingVolume() : any {
+    return this._boundingVolume;
+  }
+  public set boundingVolume(value : BoundingVolume) {
+    if (this._boundingVolume !== value) {
+      this._boundingVolume = value;
       this.dirty = true;
     }
   }

@@ -3,6 +3,8 @@ import defaultValue from "../core/defaultValue";
 import defined from "../core/defined";
 import Context from "./Context";
 import demodernizeShader from "./demodernizeShader";
+import Builtins from "../shaders/builtin";
+import AutomaticUniforms from "./AutomaticUniforms";
 
 function removeComments(shaderText: string) : string {
   // remove inline comments
@@ -19,19 +21,175 @@ function removeComments(shaderText: string) : string {
   });
 }
 
+const builtinsAndUniforms: {
+  [name: string]: string
+} = {};
+for (const builtinName in Builtins) {
+  if (Builtins.hasOwnProperty(builtinName)) {
+    builtinsAndUniforms[builtinName] = Builtins[builtinName];
+  }
+}
+for (const uniformName in AutomaticUniforms) {
+  if (AutomaticUniforms.hasOwnProperty(uniformName)) {
+    const uniform = AutomaticUniforms[uniformName];
+    builtinsAndUniforms[uniformName] = uniform.getDeclaration(uniformName);
+  }
+}
+
+type DependencyNode = {
+  name: string;
+  glslSource: string;
+  dependsOn: DependencyNode[];
+  requiredBy: DependencyNode[];
+  evaluated: boolean;
+};
+
+function getDependencyNode(name: string, glslSource: string, nodes: DependencyNode[]) {
+  let dependencyNode: DependencyNode;
+
+  // Check if already loaded
+  for (let i = 0; i < nodes.length; i++) {
+    if (nodes[i].name === name) {
+      dependencyNode = nodes[i];
+    }
+  }
+
+  if (!defined(dependencyNode)) {
+    // Strip doc comments so we don't accidentally try to determine a dependency for something found
+    // in a comment
+    glslSource = removeComments(glslSource);
+
+    dependencyNode = {
+      name: name,
+      glslSource: glslSource,
+      dependsOn: [],
+      requiredBy: [],
+      evaluated: false,
+    };
+
+    nodes.push(dependencyNode);
+  }
+
+  return dependencyNode;
+}
+
+function generateDependencies(currentNode: DependencyNode, dependencyNodes: DependencyNode[]) {
+  if (currentNode.evaluated) {
+    return;
+  }
+
+  currentNode.evaluated = true;
+
+  // Identify all dependencies that are referenced from this glsl source code
+  let dependentBuiltinNames: string[] = currentNode.glslSource.match(/\btoy_[a-zA-Z0-9_]*/g);
+
+  if (!defined(dependentBuiltinNames)) {
+    return;
+  }
+
+  // Remove duplicates name
+  dependentBuiltinNames = dependentBuiltinNames.filter(function (name, i) {
+    return dependentBuiltinNames.indexOf(name) === i;
+  });
+
+  dependentBuiltinNames.forEach(function (builtinName) {
+    if (
+      builtinName !== currentNode.name &&
+      builtinsAndUniforms.hasOwnProperty(builtinName)
+    ) {
+      const referenceGlslSource = builtinsAndUniforms[builtinName];
+      const referenceNode = getDependencyNode(builtinName, referenceGlslSource, dependencyNodes);
+
+      currentNode.dependsOn.push(referenceNode);
+      referenceNode.requiredBy.push(currentNode);
+
+      // Recursive call to find any dependencies of the new node
+      generateDependencies(referenceNode, dependencyNodes);
+    }
+  });
+}
+
+function sortDependencies(dependencyNodes: DependencyNode[]) {
+  const nodesWithoutIncomingEdges: DependencyNode[] = [];
+  const allNodes: DependencyNode[] = [];
+
+  while (dependencyNodes.length > 0) {
+    const node = dependencyNodes.pop();
+    allNodes.push(node);
+
+    if (node.requiredBy.length === 0) {
+      nodesWithoutIncomingEdges.push(node);
+    }
+  }
+
+  while (nodesWithoutIncomingEdges.length > 0) {
+    const currentNode = nodesWithoutIncomingEdges.shift();
+
+    dependencyNodes.push(currentNode);
+
+    for (let i = 0; i < currentNode.dependsOn.length; i++) {
+      // Remove the edge from the graph
+      const referenceNode = currentNode.dependsOn[i];
+      const index = referenceNode.requiredBy.indexOf(currentNode);
+      referenceNode.requiredBy.splice(index, 1);
+
+      // If referenced node has no more incoming edges, add to list
+      if (referenceNode.requiredBy.length === 0) {
+        nodesWithoutIncomingEdges.push(referenceNode);
+      }
+    }
+  }
+
+  // If there are any nodes left with incoming edge, then there was a circular dependency somewhere in the graph
+  const badNodes: DependencyNode[] = [];
+  for (let j = 0; j < allNodes.length; j++) {
+    if (allNodes[j].requiredBy.length !== 0) {
+      badNodes.push(allNodes[j]);
+    }
+  }
+
+  if (badNodes.length !== 0) {
+    let message = 'A circular dependency was found in the following built-in function/struct/constants:\n';
+    for (let k = 0; k < badNodes.length; k++) {
+      message += `${badNodes[k].name}\n`;
+    }
+    throw new DeveloperError(message);
+  }
+}
+
+function getBuiltinsAndAutomaticUniforms(shaderSource: string) {
+  // Generate a dependency graph for builtin functions
+  const dependencyNodes: DependencyNode[] = [];
+  const root: DependencyNode = getDependencyNode('main', shaderSource, dependencyNodes);
+  generateDependencies(root, dependencyNodes);
+  sortDependencies(dependencyNodes);
+
+  // Concatenate the source code for the function dependencies.
+  // Iterate in reverse so that dependent items are declared before they are used.
+  let builtinsSource = '';
+  for (let i = dependencyNodes.length - 1; i >= 0; i--) {
+    builtinsSource += `${dependencyNodes[i].glslSource}\n`;
+  }
+
+  return builtinsSource.replace(root.glslSource, '');
+}
+
 /**
  * @public
  */
 class ShaderSource {
   sources: string[];
   defines: string[];
+  includeBuiltIns: boolean;
 
   constructor(options: {
     sources?: string[],
     defines?: string[],
+    includeBuiltIns?: boolean,
   }) {
     this.sources = defaultValue(options.sources?.slice(0), []);
     this.defines = defaultValue(options.defines?.slice(0), []);
+    this.includeBuiltIns = defaultValue(options.includeBuiltIns, true);
   }
 
   /** @internal */
@@ -53,8 +211,9 @@ class ShaderSource {
     const definesKey = sortedDefines.join(',');
 
     const sourcesKey = this.sources.join('\n');
+    const builtinsKey = this.includeBuiltIns;
 
-    return `${definesKey}:${sourcesKey}`;
+    return `${definesKey}:${builtinsKey}:${sourcesKey}`;
   }
 }
 
@@ -74,7 +233,7 @@ function combineShader(
     }
   }
 
-  // combinedSources = removeComments(combinedSources);
+  combinedSources = removeComments(combinedSources);
 
   // Extract existing shader version from sources
   let version;
@@ -157,9 +316,9 @@ function combineShader(
 
   // Append built-ins
   let builtinSources = '';
-  // if (shaderSource.includeBuiltins) {
-  //   builtinSources = getBuiltinsAndAutomaticUniforms(combinedSources);
-  // }
+  if (shaderSource.includeBuiltIns) {
+    builtinSources = getBuiltinsAndAutomaticUniforms(combinedSources);
+  }
 
   // Reset line number
   result += '\n#line 0\n';

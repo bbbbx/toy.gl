@@ -26,6 +26,17 @@ class Matrix3 {
   static COLUMN2ROW1 = 7;
   static COLUMN2ROW2 = 8;
 
+  static ZERO = Object.freeze(new Matrix3(
+    0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0
+  ));
+  static IDENTITY = Object.freeze(new Matrix3(
+    1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0
+  ));
+
   constructor(
     column0Row0?: number,
     column1Row0?: number,
@@ -120,6 +131,19 @@ class Matrix3 {
     return array;
   }
 
+  static unpack(array: ArrayLike<number>, startingIndex = 0, result = new Matrix3()) : Matrix3 {
+    result[0] = array[startingIndex++];
+    result[1] = array[startingIndex++];
+    result[2] = array[startingIndex++];
+    result[3] = array[startingIndex++];
+    result[4] = array[startingIndex++];
+    result[5] = array[startingIndex++];
+    result[6] = array[startingIndex++];
+    result[7] = array[startingIndex++];
+    result[8] = array[startingIndex++];
+  return result;
+  }
+
   static toArray(matrix: Matrix3, result?: number[]) {
     if (!defined(result)) {
       return [
@@ -146,23 +170,7 @@ class Matrix3 {
     return result;
   }
 
-  static clone(matrix: Matrix3, result: Matrix3) {
-    if (!defined(matrix)) {
-      return undefined;
-    }
-    if (!defined(result)) {
-      return new Matrix3(
-        matrix[0],
-        matrix[3],
-        matrix[6],
-        matrix[1],
-        matrix[4],
-        matrix[7],
-        matrix[2],
-        matrix[5],
-        matrix[8]
-      );
-    }
+  static clone(matrix: Readonly<Matrix3>, result: Matrix3 = new Matrix3()) : Matrix3 {
     result[0] = matrix[0];
     result[1] = matrix[1];
     result[2] = matrix[2];
@@ -196,6 +204,62 @@ class Matrix3 {
     return column * 3 + row;
   }
 
+  static getScale(matrix: Matrix3, result = new Cartesian3()) : Cartesian3 {
+    result.x = Cartesian3.magnitude(Cartesian3.fromElements(matrix[0], matrix[1], matrix[2], scratchColumn));
+    result.y = Cartesian3.magnitude(Cartesian3.fromElements(matrix[3], matrix[4], matrix[5], scratchColumn));
+    result.z = Cartesian3.magnitude(Cartesian3.fromElements(matrix[6], matrix[7], matrix[8], scratchColumn));
+
+    return result;
+  }
+
+  static getRotation(matrix: Matrix3, result = new Matrix3()) : Matrix3 {
+    const scale = Matrix3.getScale(matrix, scaleScratch5);
+
+    result[0] = matrix[0] / scale.x;
+    result[1] = matrix[1] / scale.x;
+    result[2] = matrix[2] / scale.x;
+    result[3] = matrix[3] / scale.y;
+    result[4] = matrix[4] / scale.y;
+    result[5] = matrix[5] / scale.y;
+    result[6] = matrix[6] / scale.z;
+    result[7] = matrix[7] / scale.z;
+    result[8] = matrix[8] / scale.z;
+
+    return result;
+  }
+
+  static transpose(matrix: Matrix3, result = new Matrix3()) : Matrix3 {
+    result[0] = matrix[0];
+    result[1] = matrix[3];
+    result[2] = matrix[6];
+    result[3] = matrix[1];
+    result[4] = matrix[4];
+    result[5] = matrix[7];
+    result[6] = matrix[2];
+    result[7] = matrix[5];
+    result[8] = matrix[8];
+
+    return result;
+  }
+
+  static determinant(matrix: Matrix3) {
+    const m11 = matrix[0];
+    const m21 = matrix[3];
+    const m31 = matrix[6];
+    const m12 = matrix[1];
+    const m22 = matrix[4];
+    const m32 = matrix[7];
+    const m13 = matrix[2];
+    const m23 = matrix[5];
+    const m33 = matrix[8];
+
+    return (
+      m11 * (m22 * m33 - m23 * m32) +
+      m12 * (m23 * m31 - m21 * m33) +
+      m13 * (m21 * m32 - m22 * m31)
+    );
+  }
+
   static setColumn(matrix: Matrix3, index: number, cartesian: Cartesian3, result = matrix) : Matrix3 {
     result = Matrix3.clone(matrix, result);
     const startIndex = index * 3;
@@ -205,5 +269,8 @@ class Matrix3 {
     return result;
   }
 }
+
+const scratchColumn = new Cartesian3();
+const scaleScratch5 = new Cartesian3();
 
 export default Matrix3;

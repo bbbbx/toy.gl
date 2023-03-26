@@ -4,11 +4,21 @@ import Cartesian3 from "./Cartesian3";
 import Cartesian4 from "./Cartesian4";
 import Matrix3 from "./Matrix3";
 import MyMath from "./Math";
+import Quaternion from "./Quaternion";
 
 const scratchInverseRotation = new Matrix3();
 const scratchMatrix3Zero = new Matrix3();
 const scratchBottomRow = new Cartesian4();
 const scratchExpectedBottomRow = new Cartesian4(0.0, 0.0, 0.0, 1.0);
+
+const directionScratch = new Cartesian3();
+const rightScratch = new Cartesian3();
+const upScratch = new Cartesian3();
+
+const scratchColumn = new Cartesian3();
+const scaleScratch3 = new Cartesian3();
+const scaleScratch4 = new Cartesian3();
+const scaleScratch5 = new Cartesian3();
 
 /**
  * @public
@@ -31,31 +41,18 @@ class Matrix4 {
   14: number;
   15: number;
 
-
-
-  /**
-   * An immutable Matrix4 instance initialized to the identity matrix.
-   */
-  static IDENTITY = Object.freeze(
-    new Matrix4(
-      1.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      1.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      1.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      1.0
-    )
-  );
+  static ZERO = Object.freeze(new Matrix4(
+      0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0
+  ));
+  static IDENTITY = Object.freeze(new Matrix4(
+      1.0, 0.0, 0.0, 0.0,
+      0.0, 1.0, 0.0, 0.0,
+      0.0, 0.0, 1.0, 0.0,
+      0.0, 0.0, 0.0, 1.0
+  ));
 
   constructor(
     column0Row0?: number,
@@ -91,6 +88,143 @@ class Matrix4 {
     this[13] = defaultValue(column3Row1, 0.0);
     this[14] = defaultValue(column3Row2, 0.0);
     this[15] = defaultValue(column3Row3, 0.0);
+  }
+
+  static multiplyTransformation(left: Matrix4, right: Matrix4, result = new Matrix4()) : Matrix4 {
+    const left0 = left[0];
+    const left1 = left[1];
+    const left2 = left[2];
+    const left4 = left[4];
+    const left5 = left[5];
+    const left6 = left[6];
+    const left8 = left[8];
+    const left9 = left[9];
+    const left10 = left[10];
+    const left12 = left[12];
+    const left13 = left[13];
+    const left14 = left[14];
+
+    const right0 = right[0];
+    const right1 = right[1];
+    const right2 = right[2];
+    const right4 = right[4];
+    const right5 = right[5];
+    const right6 = right[6];
+    const right8 = right[8];
+    const right9 = right[9];
+    const right10 = right[10];
+    const right12 = right[12];
+    const right13 = right[13];
+    const right14 = right[14];
+
+    const column0Row0 = left0 * right0 + left4 * right1 + left8 * right2;
+    const column0Row1 = left1 * right0 + left5 * right1 + left9 * right2;
+    const column0Row2 = left2 * right0 + left6 * right1 + left10 * right2;
+  
+    const column1Row0 = left0 * right4 + left4 * right5 + left8 * right6;
+    const column1Row1 = left1 * right4 + left5 * right5 + left9 * right6;
+    const column1Row2 = left2 * right4 + left6 * right5 + left10 * right6;
+  
+    const column2Row0 = left0 * right8 + left4 * right9 + left8 * right10;
+    const column2Row1 = left1 * right8 + left5 * right9 + left9 * right10;
+    const column2Row2 = left2 * right8 + left6 * right9 + left10 * right10;
+  
+    const column3Row0 =
+      left0 * right12 + left4 * right13 + left8 * right14 + left12;
+    const column3Row1 =
+      left1 * right12 + left5 * right13 + left9 * right14 + left13;
+    const column3Row2 =
+      left2 * right12 + left6 * right13 + left10 * right14 + left14;
+  
+    result[0] = column0Row0;
+    result[1] = column0Row1;
+    result[2] = column0Row2;
+    result[3] = 0.0;
+    result[4] = column1Row0;
+    result[5] = column1Row1;
+    result[6] = column1Row2;
+    result[7] = 0.0;
+    result[8] = column2Row0;
+    result[9] = column2Row1;
+    result[10] = column2Row2;
+    result[11] = 0.0;
+    result[12] = column3Row0;
+    result[13] = column3Row1;
+    result[14] = column3Row2;
+    result[15] = 1.0;
+    return result;
+  }
+
+  static multiplyByUniformScale(matrix: Matrix4, scale: number, result: Matrix4) : Matrix4 {
+    result[0] = matrix[0] * scale;
+    result[1] = matrix[1] * scale;
+    result[2] = matrix[2] * scale;
+    result[3] = matrix[3];
+
+    result[4] = matrix[4] * scale;
+    result[5] = matrix[5] * scale;
+    result[6] = matrix[6] * scale;
+    result[7] = matrix[7];
+
+    result[8] = matrix[8] * scale;
+    result[9] = matrix[9] * scale;
+    result[10] = matrix[10] * scale;
+    result[11] = matrix[11];
+
+    result[12] = matrix[12];
+    result[13] = matrix[13];
+    result[14] = matrix[14];
+    result[15] = matrix[15];
+
+    return result;
+  }
+
+  static fromTranslationQuaternionRotationScale(translation: Cartesian3, rotation: Quaternion, scale: Cartesian3, result = new Matrix4()) : Matrix4 {
+    const scaleX = scale.x;
+    const scaleY = scale.y;
+    const scaleZ = scale.z;
+
+    const x2 = rotation.x * rotation.x;
+    const xy = rotation.x * rotation.y;
+    const xz = rotation.x * rotation.z;
+    const xw = rotation.x * rotation.w;
+    const y2 = rotation.y * rotation.y;
+    const yz = rotation.y * rotation.z;
+    const yw = rotation.y * rotation.w;
+    const z2 = rotation.z * rotation.z;
+    const zw = rotation.z * rotation.w;
+    const w2 = rotation.w * rotation.w;
+
+    const m00 = x2 - y2 - z2 + w2;
+    const m01 = 2.0 * (xy - zw);
+    const m02 = 2.0 * (xz + yw);
+
+    const m10 = 2.0 * (xy + zw);
+    const m11 = -x2 + y2 - z2 + w2;
+    const m12 = 2.0 * (yz - xw);
+
+    const m20 = 2.0 * (xz - yw);
+    const m21 = 2.0 * (yz + xw);
+    const m22 = -x2 - y2 + z2 + w2;
+
+    result[0] = m00 * scaleX;
+    result[1] = m10 * scaleX;
+    result[2] = m20 * scaleX;
+    result[3] = 0.0;
+    result[4] = m01 * scaleY;
+    result[5] = m11 * scaleY;
+    result[6] = m21 * scaleY;
+    result[7] = 0.0;
+    result[8] = m02 * scaleZ;
+    result[9] = m12 * scaleZ;
+    result[10] = m22 * scaleZ;
+    result[11] = 0.0;
+    result[12] = translation.x;
+    result[13] = translation.y;
+    result[14] = translation.z;
+    result[15] = 1.0;
+
+    return result;
   }
 
   static equals(left: Matrix4, right: Matrix4) {
@@ -166,6 +300,26 @@ class Matrix4 {
     return array;
   }
 
+  static unpack(array: ArrayLike<number>, startingIndex = 0, result: Matrix4 = new Matrix4()) : Matrix4 {
+    result[0] = array[startingIndex++];
+    result[1] = array[startingIndex++];
+    result[2] = array[startingIndex++];
+    result[3] = array[startingIndex++];
+    result[4] = array[startingIndex++];
+    result[5] = array[startingIndex++];
+    result[6] = array[startingIndex++];
+    result[7] = array[startingIndex++];
+    result[8] = array[startingIndex++];
+    result[9] = array[startingIndex++];
+    result[10] = array[startingIndex++];
+    result[11] = array[startingIndex++];
+    result[12] = array[startingIndex++];
+    result[13] = array[startingIndex++];
+    result[14] = array[startingIndex++];
+    result[15] = array[startingIndex];
+    return result;
+  }
+
   static toArray(matrix: Matrix4, result?: number[]) {
     if (!defined(result)) {
       return [
@@ -206,7 +360,7 @@ class Matrix4 {
     return result;
   }
 
-  static clone(matrix: Matrix4, result: Matrix4 = new Matrix4()) {
+  static clone(matrix: Readonly<Matrix4>, result: Matrix4 = new Matrix4()) : Matrix4 {
     result[0] = matrix[0];
     result[1] = matrix[1];
     result[2] = matrix[2];
@@ -746,6 +900,11 @@ class Matrix4 {
     return result;
   }
 
+  static getMaximumScale(matrix: Matrix4) {
+    Matrix4.getScale(matrix, scaleScratch3);
+    return Cartesian3.maximumComponent(scaleScratch3);
+  }
+
   static getRotation(matrix: Matrix4, result: Matrix3) {
     const scale = Matrix4.getScale(matrix, scaleScratch5);
 
@@ -841,12 +1000,5 @@ class Matrix4 {
 
 }
 
-const directionScratch = new Cartesian3();
-const rightScratch = new Cartesian3();
-const upScratch = new Cartesian3();
-
-const scratchColumn = new Cartesian3();
-const scaleScratch4 = new Cartesian3();
-const scaleScratch5 = new Cartesian3();
 
 export default Matrix4;

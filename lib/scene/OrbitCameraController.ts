@@ -208,7 +208,7 @@ class OrbitCameraController extends CameraController {
           Matrix4.getColumn<Cartesian3>(objectMatrix, 1, v);
         } else {
           Matrix4.getColumn<Cartesian3>(objectMatrix, 0, v);
-          Cartesian3.cross(controller.camera.up, v, v);
+          Cartesian3.cross(controller.camera.upAxis, v, v);
         }
         
         Cartesian3.multiplyByScalar(v, distance, v);
@@ -742,8 +742,8 @@ class OrbitCameraController extends CameraController {
     this.update = (function() {
       const offset = new Cartesian3();
 
-      // so camera.up is the orbit axis
-      const quat = new Quaternion().setFromUnitVectors(controller.camera.up, new Cartesian3(0, 1, 0));
+      // so camera.upAxis is the orbit axis
+      const quat = new Quaternion().setFromUnitVectors(controller.camera.upAxis, new Cartesian3(0, 1, 0));
       const quatInverse = Quaternion.clone(quat);
       Quaternion.inverse(quatInverse, quatInverse);
 

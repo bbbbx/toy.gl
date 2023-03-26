@@ -13,6 +13,8 @@ enum PixelDatatype {
   UNSIGNED_SHORT_4_4_4_4 = WebGLConstants.UNSIGNED_SHORT_4_4_4_4,
   UNSIGNED_SHORT_5_5_5_1 = WebGLConstants.UNSIGNED_SHORT_5_5_5_1,
   UNSIGNED_SHORT_5_6_5 = WebGLConstants.UNSIGNED_SHORT_5_6_5,
+
+  UNSIGNED_INT_2_10_10_10_REV = WebGLConstants.UNSIGNED_INT_2_10_10_10_REV,
 }
 
 export default PixelDatatype;

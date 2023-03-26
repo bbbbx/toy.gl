@@ -26,6 +26,10 @@ import Buffer from "./Buffer";
 import BufferUsage from "./BufferUsage";
 import ComponentDatatype from "../core/ComponentDatatype";
 import createTypedArray from "../core/createTypedArray";
+import Texture from "./Texture";
+import CubeMap from "./CubeMap";
+import UniformState from "./UniformState";
+import Matrix4 from "../math/Matrix4";
 
 const ViewportQuadVS = /* glsl */`
 in vec2 aPosition;
@@ -106,6 +110,8 @@ class Context {
   _textureFloatLinear: boolean;
   /** @internal */
   _textureHalfFloatLinear: boolean;
+  /** @internal */
+  _sRGB: boolean;
 
   /** @internal */
   _colorBufferFloat: boolean;
@@ -156,7 +162,7 @@ class Context {
   logShaderCompilation = false;
 
   /** @internal */
-  _us; // UniformState;
+  _us: UniformState;
 
   /** @internal */
   glCreateVertexArray: () => WebGLVertexArrayObject | WebGLVertexArrayObjectOES;
@@ -174,6 +180,122 @@ class Context {
 
   /** @internal */
   glDrawBuffers: (buffers: number[]) => void;
+
+  _defaultTexture: Texture;
+  public get defaultTexture() : Texture {
+    if (!defined(this._defaultTexture)) {
+      this._defaultTexture = new Texture({
+        context: this,
+        width: 1,
+        height: 1,
+        source: {
+          arrayBufferView: new Uint8Array([ 255, 255, 255, 255 ]),
+        },
+        flipY: false,
+      });
+    }
+
+    return this._defaultTexture;
+  }
+
+  _defaultEmissiveTexture: Texture;
+  public get defaultEmissiveTexture() : Texture {
+    if (!defined(this._defaultEmissiveTexture)) {
+      this._defaultEmissiveTexture = new Texture({
+        context: this,
+        pixelFormat: PixelFormat.RGB,
+        width: 1,
+        height: 1,
+        source: {
+          arrayBufferView: new Uint8Array([ 0, 0, 0 ]),
+        },
+        flipY: false,
+      });
+    }
+
+    return this._defaultEmissiveTexture;
+  }
+
+  _defaultNormalTexture: Texture;
+  public get defaultNormalTexture() : Texture {
+    if (!defined(this._defaultNormalTexture)) {
+      this._defaultNormalTexture = new Texture({
+        context: this,
+        pixelFormat: PixelFormat.RGB,
+        width: 1,
+        height: 1,
+        source: {
+          arrayBufferView: new Uint8Array([ 128, 128, 255 ]),
+        },
+        flipY: false,
+      });
+    }
+
+    return this._defaultNormalTexture;
+  }
+
+  _defaultCubeMap: CubeMap;
+  public get defaultCubeMap() : CubeMap {
+    if (!defined(this._defaultCubeMap)) {
+      const face = {
+        arrayBufferView: new Uint8Array([255, 255, 255, 255]),
+      };
+
+      this._defaultCubeMap = new CubeMap({
+        context: this,
+        width: 1,
+        height: 1,
+        source: {
+          positiveX: face,
+          negativeX: face,
+          positiveY: face,
+          negativeY: face,
+          positiveZ: face,
+          negativeZ: face,
+        },
+        flipY: false,
+      });
+    }
+
+    return this._defaultCubeMap;
+  }
+
+  _defaultSpecularTexture: Texture;
+  public get defaultSpecularTexture() {
+    if (!defined(this._defaultSpecularTexture)) {
+      this._defaultSpecularTexture = new Texture({
+        context: this,
+        pixelFormat: PixelFormat.RGBA,
+        width: 1,
+        height: 1,
+        source: {
+          arrayBufferView: new Uint8Array([ 0, 0, 0, 0 ]),
+        },
+        flipY: false,
+      });
+    }
+
+    return this._defaultSpecularTexture;
+  }
+
+  _defaultClearcoatTexture: Texture;
+  public get defaultClearcoatTexture() {
+    if (!defined(this._defaultClearcoatTexture)) {
+      this._defaultClearcoatTexture = new Texture({
+        context: this,
+        pixelFormat: PixelFormat.RGBA,
+        width: 1,
+        height: 1,
+        source: {
+          arrayBufferView: new Uint8Array([ 0, 0, 0, 0 ]),
+        },
+        flipY: false,
+      });
+    }
+
+    return this._defaultClearcoatTexture;
+  }
+  
 
   /**
    * Create WebGL context.
@@ -211,7 +333,6 @@ class Context {
 
 
     ContextLimits._maximumVertexAttributes = gl.getParameter(gl.MAX_VERTEX_ATTRIBS); // min: 8
-    ContextLimits._maximumColorAttachments = this.drawBuffers ? gl.getParameter(WebGLConstants.MAX_COLOR_ATTACHMENTS) : 1;
     ContextLimits._maximumRenderbufferSize = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE); // min: 1
     ContextLimits._maximumTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     ContextLimits._maximumCubeMapSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE); // min: 16
@@ -233,6 +354,8 @@ class Context {
     this._textureHalfFloat = !!getExtension(gl, ['OES_texture_half_float']);
     this._textureFloatLinear = !!getExtension(gl, ['OES_texture_float_linear']);
     this._textureHalfFloatLinear = !!getExtension(gl, ['OES_texture_half_float_linear']);
+
+    this._sRGB = !!getExtension(gl, ['EXT_sRGB']);
 
     this._colorBufferFloat = !!getExtension(gl, ['EXT_color_buffer_float', 'WEBGL_color_buffer_float']);
     this._colorBufferHalfFloat = !!getExtension(gl, ['EXT_color_buffer_half_float', 'WEBGL_color_buffer_half_float']);
@@ -332,17 +455,21 @@ class Context {
     this._vertexArrayObject = !!vertexArrayObject;
     this._instancedArrays = !!instancedArrays;
     this._drawBuffers = !!drawBuffers;
+    ContextLimits._maximumDrawBuffers = this.drawBuffers ? gl.getParameter(WebGLConstants.MAX_DRAW_BUFFERS) : 1;
+    ContextLimits._maximumColorAttachments = this.drawBuffers ? gl.getParameter(WebGLConstants.MAX_COLOR_ATTACHMENTS) : 1;
 
     this._clearColor = new Color(0.0, 0.0, 0.0, 0.0);
     this._clearDepth = 1.0;
     this._clearStencil = 0;
 
-    const rs = RenderState.fromCache();
+    const us = new UniformState();
     const ps = new PassState(this);
+    const rs = RenderState.fromCache();
 
-    this._defaultRenderState = rs;
     this._defaultPassState = ps;
+    this._defaultRenderState = rs;
 
+    this._us = us;
     this._currentRenderState = rs;
     this._currentPassState = ps;
     this._currentFramebuffer = undefined;
@@ -358,16 +485,11 @@ class Context {
     RenderState.apply(gl, rs, ps);
   }
 
-  public get drawingBufferWidth() : number {
-    return this._gl.drawingBufferWidth;
-  }
-  public get drawingBufferHeight() : number {
-    return this._gl.drawingBufferHeight;
-  }
+  public get drawingBufferWidth() : number { return this._gl.drawingBufferWidth; }
+  public get drawingBufferHeight() : number { return this._gl.drawingBufferHeight; }
 
-  public get shaderCache() : ShaderCache {
-    return this._shaderCache;
-  }
+  public get shaderCache() : ShaderCache { return this._shaderCache; }
+  public get uniformState() { return this._us; }
 
   public get debugShaders() : WEBGL_debug_shaders {
     return this._debugShaders;
@@ -390,6 +512,8 @@ class Context {
       (!this._webgl2 && this._textureHalfFloatLinear)
     );
   }
+
+  public get sRGB() : boolean { return this._webgl2 || this._sRGB; }
 
   public get floatingPointTexture() : boolean {
     return this._textureFloat || this._webgl2;
@@ -628,6 +752,7 @@ function continueDraw(context: Context, drawCommand: DrawCommand, shaderProgram:
   let count = drawCommand._count;
   const instanceCount = drawCommand.instanceCount;
 
+  context._us.model = defaultValue(drawCommand._modelMatrix, Matrix4.IDENTITY);
   shaderProgram._setUniforms(uniformMap, context._us, context.validateShaderProgram);
 
   va._bind();

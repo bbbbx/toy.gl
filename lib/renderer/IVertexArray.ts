@@ -5,7 +5,7 @@ import Buffer from "./Buffer";
  * @public
  * Vertex Array Object attribute slot, see {@link VertexArray}.
  */
-interface Attribute {
+interface VertexArrayAttribute {
   index?: number,
   enabled?: boolean,
   value?: number[],
@@ -16,8 +16,10 @@ interface Attribute {
   componentDatatype?: ComponentDatatype,
   normalize?: boolean,
   instanceDivisor?: number,
+
+  count?: number,
 }
 
 export {
-  Attribute,
+  VertexArrayAttribute,
 };

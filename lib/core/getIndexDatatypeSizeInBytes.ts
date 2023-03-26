@@ -1,3 +1,4 @@
+import DeveloperError from "./DeveloperError";
 import IndexDatatype from "./IndexDatatype";
 
 function getIndexDatatypeSizeInBytes(indexDatatype: IndexDatatype) : number {
@@ -9,6 +10,7 @@ function getIndexDatatypeSizeInBytes(indexDatatype: IndexDatatype) : number {
     case IndexDatatype.UNSIGNED_INT:
       return Uint32Array.BYTES_PER_ELEMENT;
   }
+  throw new DeveloperError('indexDatatype is required and must be a valid IndexDatatype constant.');
 }
 
 export default getIndexDatatypeSizeInBytes;

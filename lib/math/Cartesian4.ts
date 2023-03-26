@@ -16,6 +16,9 @@ class Cartesian4 {
     this.w = w;
   }
 
+  static ZERO = Object.freeze(new Cartesian4(0.0, 0.0, 0.0, 0.0));
+  static ONE = Object.freeze(new Cartesian4(1.0, 1.0, 1.0, 1.0));
+
   static multiplyByUniformScale(cartesian: Cartesian4, scalar: number, result: Cartesian4 = new Cartesian4()): Cartesian4 {
     result.x = cartesian.x * scalar;
     result.y = cartesian.y * scalar;
@@ -36,15 +39,7 @@ class Cartesian4 {
     );
   }
 
-  static clone(cartesian: Cartesian4, result: Cartesian4) {
-    if (!defined(cartesian)) {
-      return undefined;
-    }
-
-    if (!defined(result)) {
-      return new Cartesian4(cartesian.x, cartesian.y, cartesian.z, cartesian.w);
-    }
-
+  static clone(cartesian: Readonly<Cartesian4>, result = new Cartesian4()) : Cartesian4 {
     result.x = cartesian.x;
     result.y = cartesian.y;
     result.z = cartesian.z;
@@ -68,6 +63,15 @@ class Cartesian4 {
     array[startingIndex + 3] = value.w;
 
     return array;
+  }
+
+  static unpack(array: ArrayLike<number>, startingIndex = 0, result: Cartesian4 = new Cartesian4) : Cartesian4 {
+    result.x = array[startingIndex + 0];
+    result.y = array[startingIndex + 1];
+    result.z = array[startingIndex + 2];
+    result.w = array[startingIndex + 3];
+
+    return result;
   }
 }
 

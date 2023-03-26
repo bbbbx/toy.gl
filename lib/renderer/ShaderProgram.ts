@@ -8,6 +8,9 @@ import { CachedShader } from "./IShaderCache";
 import { UniformMap } from "./IDrawCommand";
 import { createUniformArray, UniformArray, UniformArraySampler } from "./createUniformArray";
 import DeveloperError from "../core/DeveloperError";
+import UniformState from "./UniformState";
+import AutomaticUniform from "./AutomaticUniform";
+import AutomaticUniforms from "./AutomaticUniforms";
 
 function handleUniformPrecisionMismatches(vertexShaderText: string, fragmentShaderText: string) {
   const duplicateUniformNames = {};
@@ -60,7 +63,10 @@ class ShaderProgram {
   /** @internal */
   _uniforms: (Uniform | UniformArray)[];
   /** @internal */
-  _automaticUniforms: any[];
+  _automaticUniforms: {
+    automaticUniform: AutomaticUniform,
+    uniform: Uniform | UniformArray
+  }[];
   /** @internal */
   _manualUniforms: (Uniform | UniformArray)[];
   /** @internal */
@@ -150,7 +156,7 @@ class ShaderProgram {
   }
 
   /** @internal */
-  _setUniforms(uniformMap: UniformMap, uniformState, validate: boolean) {
+  _setUniforms(uniformMap: UniformMap, uniformState: UniformState, validate: boolean) {
     let len, i;
 
     if (defined(uniformMap)) {
@@ -520,7 +526,7 @@ function partitionUniforms(
 ) {
   const automaticUniforms: {
     uniform: Uniform | UniformArray,
-    automaticUniform//: AutomaticUniform
+    automaticUniform: AutomaticUniform,
   }[] = [];
   const manualUniforms: (Uniform | UniformArray)[] = [];
 
@@ -529,7 +535,7 @@ function partitionUniforms(
       const uniformObject = uniformsByName[uniform];
       const uniformName = uniform;
 
-      const automaticUniform = undefined; //AutomaticUniforms[uniformName];
+      const automaticUniform = AutomaticUniforms[uniformName];
       if (defined(automaticUniform)) {
         automaticUniforms.push({
           uniform: uniformObject,

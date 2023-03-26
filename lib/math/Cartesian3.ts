@@ -1,4 +1,5 @@
 import defined from "../core/defined";
+import Cartesian4 from "./Cartesian4";
 import Quaternion from "./Quaternion";
 import Spherical from "./Spherical";
 
@@ -15,6 +16,9 @@ class Cartesian3 {
     this.y = y;
     this.z = z;
   }
+
+  static ZERO = Object.freeze(new Cartesian3(0.0, 0.0, 0.0));
+  static ONE = Object.freeze(new Cartesian3(1.0, 1.0, 1.0));
 
   /**
    * Computes the provided Cartesian's squared magnitude.
@@ -40,6 +44,17 @@ class Cartesian3 {
     return Math.sqrt(Cartesian3.magnitudeSquared(cartesian));
   };
 
+  static midpoint(left: Cartesian3, right: Cartesian3, result = new Cartesian3()) {
+    result.x = (left.x + right.x) * 0.5;
+    result.y = (left.y + right.y) * 0.5;
+    result.z = (left.z + right.z) * 0.5;
+    return result;
+  }
+
+  static distance(left: Cartesian3, right: Cartesian3) {
+    Cartesian3.subtract(left, right, distanceScratch);
+    return Cartesian3.magnitude(distanceScratch)
+  }
 
   /**
    * Computes the normalized form of the supplied Cartesian.
@@ -136,14 +151,7 @@ class Cartesian3 {
     );
   }
 
-  static clone(cartesian: Cartesian3, result?: Cartesian3): Cartesian3 {
-    if (!defined(cartesian)) {
-      return undefined;
-    }
-    if (!defined(result)) {
-      return new Cartesian3(cartesian.x, cartesian.y, cartesian.z);
-    }
-
+  static clone(cartesian: Readonly<Cartesian3>, result = new Cartesian3()) : Cartesian3 {
     result.x = cartesian.x;
     result.y = cartesian.y;
     result.z = cartesian.z;
@@ -166,11 +174,48 @@ class Cartesian3 {
     return array;
   }
 
+  static unpack(array: ArrayLike<number>, startingIndex = 0, result = new Cartesian3): Cartesian3 {
+    result.x = array[startingIndex + 0];
+    result.y = array[startingIndex + 1];
+    result.z = array[startingIndex + 2];
+
+    return result;
+  }
+
   static fromElements(x: number, y: number, z: number, result: Cartesian3 = new Cartesian3()) : Cartesian3 {
     result.x = x;
     result.y = y;
     result.z = z;
     return result;
+  }
+
+  static fromCartesian4(cartesian: Cartesian4, result = new Cartesian3()) : Cartesian3 {
+    result.x = cartesian.x;
+    result.y = cartesian.y;
+    result.z = cartesian.z;
+    return result;
+  }
+
+  static minimumByComponent(first: Cartesian3, second: Cartesian3, result = new Cartesian3()) {
+    result.x = Math.min(first.x, second.x);
+    result.y = Math.min(first.y, second.y);
+    result.z = Math.min(first.z, second.z);
+    return result;
+  }
+
+  static maximumByComponent(first: Cartesian3, second: Cartesian3, result = new Cartesian3()) {
+    result.x = Math.max(first.x, second.x);
+    result.y = Math.max(first.y, second.y);
+    result.z = Math.max(first.z, second.z);
+    return result;
+  }
+
+  static maximumComponent(cartesian: Cartesian3) {
+    return Math.max(cartesian.x, cartesian.y, cartesian.z);
+  }
+
+  static minimumComponent(cartesian: Cartesian3) {
+    return Math.min(cartesian.x, cartesian.y, cartesian.z);
   }
 
   public set(x: number | Cartesian3, y?: number, z?: number) : Cartesian3 {
@@ -215,5 +260,7 @@ class Cartesian3 {
     return this.setFromSphericalCoords(s.radius, s.phi, s.theta);
   }
 }
+
+const distanceScratch = new Cartesian3();
 
 export default Cartesian3;

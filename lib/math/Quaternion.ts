@@ -14,6 +14,9 @@ class Quaternion {
   z: number;
   w: number;
 
+  static ZERO = Object.freeze(new Quaternion(0.0, 0.0, 0.0, 0.0));
+  static IDENTITY = Object.freeze(new Quaternion(0.0, 0.0, 0.0, 1.0));
+
   constructor(x: number = 0.0, y: number = 0.0, z: number = 0.0, w: number = 0.0) {
     this.x = x;
     this.y = y;
@@ -21,8 +24,15 @@ class Quaternion {
     this.w = w;
   }
 
+  static unpack(array: ArrayLike<number>, startingIndex = 0, result: Quaternion = new Quaternion()) : Quaternion {
+    result.x = array[startingIndex + 0];
+    result.y = array[startingIndex + 1];
+    result.z = array[startingIndex + 2];
+    result.w = array[startingIndex + 3];
+    return result;
+  }
 
-  static clone(quaternion: Quaternion, result: Quaternion = new Quaternion()) : Quaternion {
+  static clone(quaternion: Readonly<Quaternion>, result: Quaternion = new Quaternion()) : Quaternion {
     result.x = quaternion.x;
     result.y = quaternion.y;
     result.z = quaternion.z;

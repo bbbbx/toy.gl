@@ -23,6 +23,7 @@ function pixelDatatypeToWebGLConstant(pixelDatatype: PixelDatatype, context: Con
     case PixelDatatype.UNSIGNED_SHORT_5_6_5:
       return WebGLConstants.UNSIGNED_SHORT_5_6_5;
   }
+  return pixelDatatype as unknown as WebGLConstants;
 }
 
 export default pixelDatatypeToWebGLConstant;

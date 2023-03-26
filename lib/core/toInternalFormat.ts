@@ -1,6 +1,7 @@
 import Context from "../renderer/Context";
 import PixelDatatype from "./PixelDatatype";
 import PixelFormat from "./PixelFormat";
+import PixelInternalFormat from "./PixelInternalFormat";
 import WebGLConstants from "./WebGLConstants";
 
 function toInternalFormat(
@@ -49,6 +50,10 @@ function toInternalFormat(
       case PixelFormat.R:
         return WebGLConstants.R16F;
     }
+  }
+
+  if (pixelDatatype === PixelDatatype.UNSIGNED_INT_2_10_10_10_REV) {
+    return PixelInternalFormat.RGB10_A2;
   }
 
   return pixelFormat;

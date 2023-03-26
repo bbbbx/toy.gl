@@ -19,6 +19,7 @@ import alignmentInBytes from "../core/alignmentInBytes";
 import flipYForArrayBufferView from "../core/flipYForArrayBufferView";
 import pixelDatatypeToWebGLConstant from "../core/pixelDatatypeToWebGLConstant";
 import isCompressedFormat from "../core/isCompressedFormat";
+import PixelInternalFormat from "../core/PixelInternalFormat";
 
 function compressedTextureSizeInBytes(
   pixelFormat: PixelFormat,
@@ -210,6 +211,7 @@ class Texture {
     width?: number,
     height?: number,
     source?: TexSource | TexImageSource;
+    internalFormat?: PixelInternalFormat,
     pixelFormat?: PixelFormat,
     pixelDatatype?: PixelDatatype,
     preMultiplyAlpha?: boolean,
@@ -233,7 +235,7 @@ class Texture {
 
     const pixelFormat = defaultValue(options.pixelFormat, PixelFormat.RGBA);
     const pixelDatatype = defaultValue(options.pixelDatatype, PixelDatatype.UNSIGNED_BYTE);
-    const internalFormat = toInternalFormat(pixelFormat, pixelDatatype, context);
+    const internalFormat = defaultValue(options.internalFormat, toInternalFormat(pixelFormat, pixelDatatype, context));
 
     // Use premultiplied alpha for opaque textures should perform better on Chrome:
     // http://media.tojicode.com/webglCamp4/#20

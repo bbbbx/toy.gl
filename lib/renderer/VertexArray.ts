@@ -7,15 +7,15 @@ import validateComponentDatatype from "../core/validateComponentDatatype";
 import getComponentDatatypeSizeInBytes from "../core/getComponentDatatypeSizeInBytes";
 import Context from "./Context";
 import Buffer from "./Buffer";
-import { Attribute } from "./IVertexArray";
+import { VertexArrayAttribute } from "./IVertexArray";
 import ContextLimits from "./ContextLimits";
 
-interface VertexArrayAttribute extends Attribute {
+interface VertexArrayAttributeWithMethods extends VertexArrayAttribute {
   vertexAttrib: (gl: WebGLRenderingContext | WebGL2RenderingContext) => void,
   disableVertexAttribArray: (gl: WebGLRenderingContext | WebGL2RenderingContext) => void,
 }
 
-function addAttribute(attributes: VertexArrayAttribute[], attribute: Attribute, index: number, context: Context) {
+function addAttribute(attributes: VertexArrayAttributeWithMethods[], attribute: VertexArrayAttribute, index: number, context: Context) {
   const hasVertexBuffer = defined(attribute.vertexBuffer)
   const hasValue = defined(attribute.value);
   const componentsPerAttribute = hasValue
@@ -61,7 +61,7 @@ function addAttribute(attributes: VertexArrayAttribute[], attribute: Attribute, 
   }
 
   // Shallow copy the attribute; we do not want to copy the vertex buffer.
-  const attr : VertexArrayAttribute = {
+  const attr : VertexArrayAttributeWithMethods = {
     index: defaultValue(attribute.index, index),
     enabled: defaultValue(attribute.enabled, true),
     vertexBuffer: attribute.vertexBuffer,
@@ -80,27 +80,31 @@ function addAttribute(attributes: VertexArrayAttribute[], attribute: Attribute, 
   if (hasVertexBuffer) {
     // Common case: vertex buffer for per-vertex data
     attr.vertexAttrib = function(gl: WebGLRenderingContext | WebGL2RenderingContext) {
-      const index = this.index;
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer._getBuffer());
+      const attr = this as VertexArrayAttributeWithMethods;
+
+      const index = attr.index;
+      gl.bindBuffer(gl.ARRAY_BUFFER, attr.vertexBuffer._getBuffer());
       gl.vertexAttribPointer(
         index,
-        this.componentsPerAttribute,
-        this.componentDatatype,
-        this.normalize,
-        this.strideInBytes,
-        this.offsetInBytes
+        attr.componentsPerAttribute,
+        attr.componentDatatype,
+        attr.normalize,
+        attr.strideInBytes,
+        attr.offsetInBytes
       );
       gl.enableVertexAttribArray(index);
-      if (this.instanceDivisor > 0) {
-        context.glVertexAttribDivisor(index, this.instanceDivisor);
-        context._vertexAttribDivisor[index] = this.instanceDivisor;
+      if (attr.instanceDivisor > 0) {
+        context.glVertexAttribDivisor(index, attr.instanceDivisor);
+        context._vertexAttribDivisor[index] = attr.instanceDivisor;
         context._previousDrawInstanced = true;
       }
     };
 
     attr.disableVertexAttribArray = function(gl: WebGLRenderingContext | WebGL2RenderingContext) {
-      gl.disableVertexAttribArray(this.index);
-      if (this.instanceDivisor > 0) {
+      const attr = this as VertexArrayAttributeWithMethods;
+
+      gl.disableVertexAttribArray(attr.index);
+      if (attr.instanceDivisor > 0) {
         context.glVertexAttribDivisor(index, 0);
       }
     };
@@ -109,22 +113,26 @@ function addAttribute(attributes: VertexArrayAttribute[], attribute: Attribute, 
     switch (attr.componentsPerAttribute) {
       case 1:
         attr.vertexAttrib = function(gl) {
-          gl.vertexAttrib1fv(this.index, this.value);
+          const attr = this as VertexArrayAttributeWithMethods;
+          gl.vertexAttrib1fv(attr.index, attr.value);
         };
         break;
       case 2:
         attr.vertexAttrib = function(gl) {
-          gl.vertexAttrib2fv(this.index, this.value);
+          const attr = this as VertexArrayAttributeWithMethods;
+          gl.vertexAttrib2fv(attr.index, attr.value);
         };
         break;
       case 3:
         attr.vertexAttrib = function(gl) {
-          gl.vertexAttrib3fv(this.index, this.value);
+          const attr = this as VertexArrayAttributeWithMethods;
+          gl.vertexAttrib3fv(attr.index, attr.value);
         };
         break;
       case 4:
         attr.vertexAttrib = function(gl) {
-          gl.vertexAttrib4fv(this.index, this.value);
+          const attr = this as VertexArrayAttributeWithMethods;
+          gl.vertexAttrib4fv(attr.index, attr.value);
         };
         break;
     };
@@ -135,7 +143,7 @@ function addAttribute(attributes: VertexArrayAttribute[], attribute: Attribute, 
   attributes.push(attr);
 }
 
-function bind(gl: WebGLRenderingContext | WebGL2RenderingContext, attributes: VertexArrayAttribute[], indexBuffer: Buffer) {
+function bind(gl: WebGLRenderingContext | WebGL2RenderingContext, attributes: VertexArrayAttributeWithMethods[], indexBuffer: Buffer) {
   const length = attributes.length;
   for (let i = 0; i < length; i++) {
     const attribute = attributes[i];
@@ -221,7 +229,7 @@ class VertexArray {
   /** @internal */
   _vao: WebGLVertexArrayObjectOES | WebGLVertexArrayObject;
   /** @internal */
-  _attributes: VertexArrayAttribute[];
+  _attributes: VertexArrayAttributeWithMethods[];
   /** @internal */
   _indexBuffer: Buffer;
 
@@ -332,7 +340,7 @@ class VertexArray {
    */
   constructor(options: {
     context: Context,
-    attributes: Attribute[],
+    attributes: VertexArrayAttribute[],
     indexBuffer: Buffer,
   }) {
     const context = options.context;
@@ -341,7 +349,7 @@ class VertexArray {
     const indexBuffer = options.indexBuffer;
 
     let i;
-    const vaAttributes: VertexArrayAttribute[] = [];
+    const vaAttributes: VertexArrayAttributeWithMethods[] = [];
     let numberOfVertices = 1; // if every attribute is backed by a single value
     let hasInstancedAttributes = false;
     let hasConstantAttributes = false;
@@ -392,7 +400,7 @@ class VertexArray {
     this._indexBuffer = indexBuffer;
   }
 
-  public getAttribute(index: number) : Attribute {
+  public getAttribute(index: number) : VertexArrayAttribute {
     return this._attributes[index];
   }
 

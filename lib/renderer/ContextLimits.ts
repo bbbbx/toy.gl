@@ -7,6 +7,8 @@ const ContextLimits = {
   /* @internal */
   _maximumColorAttachments: 0,
   /* @internal */
+  _maximumDrawBuffers: 0,
+  /* @internal */
   _maximumRenderbufferSize: 0,
   /* @internal */
   _maximumTextureSize: 0,
@@ -24,6 +26,9 @@ const ContextLimits = {
   },
   get maximumColorAttachments() : number {
     return this._maximumColorAttachments;
+  },
+  get maximumDrawBuffers() : number {
+    return this._maximumDrawBuffers;
   },
   get maximumRenderbufferSize() : number {
     return this._maximumRenderbufferSize;

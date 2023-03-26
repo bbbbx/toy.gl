@@ -240,7 +240,7 @@ class UniformInt extends Uniform {
   set(): void {
     if (this.value !== this._value) {
       this._value = this.value;
-      this._gl.uniform1f(this._location, this.value);
+      this._gl.uniform1i(this._location, this.value);
     }
   }
 }
@@ -263,7 +263,7 @@ class UniformIntVec2 extends Uniform {
     const v = this.value;
     if (!Cartesian2.equals(v, this._value)) {
       Cartesian2.clone(v, this._value);
-      this._gl.uniform2f(this._location, v.x, v.y);
+      this._gl.uniform2i(this._location, v.x, v.y);
     }
   }
 }

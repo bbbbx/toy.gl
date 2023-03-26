@@ -16,6 +16,9 @@ class Cartesian2 {
     return Cartesian2.fromElements(x, y, this);
   }
 
+  static ZERO = Object.freeze(new Cartesian2(0.0, 0.0));
+  static ONE = Object.freeze(new Cartesian2(1.0, 1.0));
+
   static equals(left: Cartesian2, right: Cartesian2) {
     return (
       left === right ||
@@ -26,14 +29,7 @@ class Cartesian2 {
     );
   }
 
-  static clone(cartesian: Cartesian2, result: Cartesian2) {
-    if (!defined(cartesian)) {
-      return undefined;
-    }
-    if (!defined(result)) {
-      return new Cartesian2(cartesian.x, cartesian.y);
-    }
-
+  static clone(cartesian: Readonly<Cartesian2>, result = new Cartesian2()) : Cartesian2 {
     result.x = cartesian.x;
     result.y = cartesian.y;
     return result;
@@ -55,6 +51,13 @@ class Cartesian2 {
     array[startingIndex + 1] = value.y;
 
     return array;
+  }
+
+  static unpack(array: ArrayLike<number>, startingIndex: number = 0, result: Cartesian2 = new Cartesian2()) : Cartesian2 {
+    result.x = array[startingIndex + 0];
+    result.y = array[startingIndex + 1];
+
+    return result;
   }
 
   static fromElements(x: number, y: number, result = new Cartesian2()): Cartesian2 {

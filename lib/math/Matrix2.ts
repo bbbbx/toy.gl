@@ -10,6 +10,8 @@ class Matrix2 {
   2: number;
   3: number;
 
+  static ZERO = Object.freeze(new Matrix2(0.0, 0.0, 0.0, 0.0));
+
   constructor(
     column0Row0?: number,
     column1Row0?: number,
@@ -52,13 +54,15 @@ class Matrix2 {
     return array;
   }
 
-  static clone(matrix: Matrix2, result?: Matrix2) {
-    if (!defined(matrix)) {
-      return undefined;
-    }
-    if (!defined(result)) {
-      return new Matrix2(matrix[0], matrix[2], matrix[1], matrix[3]);
-    }
+  static unpack(value: ArrayLike<number>, startingIndex = 0, result = new Matrix2()) : Matrix2 {
+    result[0] = value[startingIndex + 0];
+    result[1] = value[startingIndex + 1];
+    result[2] = value[startingIndex + 2];
+    result[3] = value[startingIndex + 3];
+    return result;
+  }
+
+  static clone(matrix: Readonly<Matrix2>, result = new Matrix2()) : Matrix2 {
     result[0] = matrix[0];
     result[1] = matrix[1];
     result[2] = matrix[2];
