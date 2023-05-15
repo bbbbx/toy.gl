@@ -11,6 +11,7 @@ import Texture from "./Texture";
 import CubeMap from "./CubeMap";
 import Texture3D from "./Texture3D";
 import Texture2DArray from "./Texture2DArray";
+import WebGLConstants from "../core/WebGLConstants";
 
 function createUniform(
   gl: WebGLRenderingContext | WebGL2RenderingContext,
@@ -50,6 +51,14 @@ function createUniform(
       return new UniformMat3(gl, activeUniform, uniformName, location);
       case gl.FLOAT_MAT4:
       return new UniformMat4(gl, activeUniform, uniformName, location);
+    case WebGLConstants.UNSIGNED_INT:
+      return new UniformUint(gl as WebGL2RenderingContext, activeUniform, uniformName, location);
+    case WebGLConstants.UNSIGNED_INT_VEC2:
+      return new UniformUintVec2(gl as WebGL2RenderingContext, activeUniform, uniformName, location);
+    case WebGLConstants.UNSIGNED_INT_VEC3:
+      return new UniformUintVec3(gl as WebGL2RenderingContext, activeUniform, uniformName, location);
+    case WebGLConstants.UNSIGNED_INT_VEC4:
+      return new UniformUintVec4(gl as WebGL2RenderingContext, activeUniform, uniformName, location);
     default:
       throw new Error(`Unrecognized uniform type: ${activeUniform.type} for uniform "${uniformName}".`);
   }
@@ -245,6 +254,29 @@ class UniformInt extends Uniform {
   }
 }
 ////////////////////////////////////////////////////////////
+class UniformUint extends Uniform {
+  value: number;
+  _value: number;
+  _gl: WebGL2RenderingContext;
+  constructor(
+    gl: WebGL2RenderingContext,
+    activeUniform: WebGLActiveInfo,
+    uniformName: string,
+    location: WebGLUniformLocation
+  ) {
+    super(gl, activeUniform, uniformName, location);
+    this.value = undefined;
+    this._value = 0.0;
+  }
+
+  set(): void {
+    if (this.value !== this._value) {
+      this._value = this.value;
+      this._gl.uniform1ui(this._location, this.value);
+    }
+  }
+}
+////////////////////////////////////////////////////////////
 class UniformIntVec2 extends Uniform {
   value: Cartesian2;
   _value: Cartesian2;
@@ -264,6 +296,30 @@ class UniformIntVec2 extends Uniform {
     if (!Cartesian2.equals(v, this._value)) {
       Cartesian2.clone(v, this._value);
       this._gl.uniform2i(this._location, v.x, v.y);
+    }
+  }
+}
+////////////////////////////////////////////////////////////
+class UniformUintVec2 extends Uniform {
+  value: Cartesian2;
+  _value: Cartesian2;
+  _gl: WebGL2RenderingContext;
+  constructor(
+    gl: WebGL2RenderingContext,
+    activeUniform: WebGLActiveInfo,
+    uniformName: string,
+    location: WebGLUniformLocation
+  ) {
+    super(gl, activeUniform, uniformName, location);
+    this.value = undefined;
+    this._value = new Cartesian2();
+  }
+
+  set(): void {
+    const v = this.value;
+    if (!Cartesian2.equals(v, this._value)) {
+      Cartesian2.clone(v, this._value);
+      this._gl.uniform2ui(this._location, v.x, v.y);
     }
   }
 }
@@ -291,6 +347,31 @@ class UniformIntVec3 extends Uniform {
   }
 }
 ////////////////////////////////////////////////////////////
+class UniformUintVec3 extends Uniform {
+  value: Cartesian3;
+  _value: Cartesian3;
+  _gl: WebGL2RenderingContext;
+
+  constructor(
+    gl: WebGL2RenderingContext,
+    activeUniform: WebGLActiveInfo,
+    uniformName: string,
+    location: WebGLUniformLocation
+  ) {
+    super(gl, activeUniform, uniformName, location);
+    this.value = undefined;
+    this._value = new Cartesian3();
+  }
+
+  set(): void {
+    const v = this.value;
+    if (!Cartesian3.equals(v, this._value)) {
+      Cartesian3.clone(v, this._value);
+      this._gl.uniform3ui(this._location, v.x, v.y, v.z);
+    }
+  }
+}
+////////////////////////////////////////////////////////////
 class UniformIntVec4 extends Uniform {
   value: Cartesian4;
   _value: Cartesian4;
@@ -310,6 +391,30 @@ class UniformIntVec4 extends Uniform {
     if (!Cartesian4.equals(v, this._value)) {
       Cartesian4.clone(v, this._value);
       this._gl.uniform4i(this._location, v.x, v.y, v.z, v.w);
+    }
+  }
+}
+////////////////////////////////////////////////////////////
+class UniformUintVec4 extends Uniform {
+  value: Cartesian4;
+  _value: Cartesian4;
+  _gl: WebGL2RenderingContext;
+  constructor(
+    gl: WebGL2RenderingContext,
+    activeUniform: WebGLActiveInfo,
+    uniformName: string,
+    location: WebGLUniformLocation
+  ) {
+    super(gl, activeUniform, uniformName, location);
+    this.value = undefined;
+    this._value = new Cartesian4();
+  }
+
+  set(): void {
+    const v = this.value;
+    if (!Cartesian4.equals(v, this._value)) {
+      Cartesian4.clone(v, this._value);
+      this._gl.uniform4ui(this._location, v.x, v.y, v.z, v.w);
     }
   }
 }

@@ -12,6 +12,7 @@ import CubeMap from "./CubeMap";
 import Texture from "./Texture";
 import Texture3D from "./Texture3D";
 import Texture2DArray from "./Texture2DArray";
+import WebGLConstants from "../core/WebGLConstants";
 
 function createUniformArray(
   gl: WebGLRenderingContext | WebGL2RenderingContext,
@@ -45,6 +46,14 @@ function createUniformArray(
     case gl.INT_VEC4:
     case gl.BOOL_VEC4:
       return new UniformArrayIntVec4(gl, activeUniform, uniformName, locations);
+    case WebGLConstants.UNSIGNED_INT:
+      return new UniformArrayUint(gl as WebGL2RenderingContext, activeUniform, uniformName, locations);
+    case WebGLConstants.UNSIGNED_INT_VEC2:
+      return new UniformArrayUintVec2(gl as WebGL2RenderingContext, activeUniform, uniformName, locations);
+    case WebGLConstants.UNSIGNED_INT_VEC3:
+      return new UniformArrayUintVec3(gl as WebGL2RenderingContext, activeUniform, uniformName, locations);
+    case WebGLConstants.UNSIGNED_INT_VEC4:
+      return new UniformArrayUintVec4(gl as WebGL2RenderingContext, activeUniform, uniformName, locations);
     case gl.FLOAT_MAT2:
       return new UniformArrayMat2(gl, activeUniform, uniformName, locations);
     case gl.FLOAT_MAT3:
@@ -65,7 +74,7 @@ interface UniformArray {
 abstract class UniformArray {
   name: string;
   value: number[] | Cartesian2[] | Cartesian3[] | Cartesian4[] | Color[] | Matrix2[] | Matrix3[] | Matrix4[] | Texture[] | CubeMap[] | Texture3D[] | Texture2DArray[];
-  _value: number[] | Int32Array | Float32Array;
+  _value: number[] | Int32Array | Uint32Array | Float32Array;
   _gl: WebGLRenderingContext | WebGL2RenderingContext;
   _location: WebGLUniformLocation;
 
@@ -354,6 +363,44 @@ class UniformArrayInt extends UniformArray {
   }
 }
 ///////////////////////////////////////////////////////////////////////////
+class UniformArrayUint extends UniformArray {
+  value: number[];
+  _value: Uint32Array;
+  _gl: WebGL2RenderingContext;
+  constructor(
+    gl: WebGL2RenderingContext,
+    activeUniform: WebGLActiveInfo,
+    uniformName: string,
+    locations: WebGLUniformLocation[]
+  ) {
+    super(gl, activeUniform, uniformName, locations);
+
+    const length = locations.length;
+    this.value = new Array(length);
+    this._value = new Uint32Array(length);
+  }
+
+  set(): void {
+    const value = this.value;
+    const length = value.length;
+    const arrayBuffer = this._value;
+    let changed = false;
+
+    for (let i = 0; i < length; i++) {
+      const v = value[i];
+
+      if (arrayBuffer[i] !== v) {
+        arrayBuffer[i] = v;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this._gl.uniform1uiv(this._location, arrayBuffer);
+    }
+  }
+}
+///////////////////////////////////////////////////////////////////////////
 class UniformArrayIntVec2 extends UniformArray {
   value: Cartesian2[];
   _value: Int32Array;
@@ -389,6 +436,46 @@ class UniformArrayIntVec2 extends UniformArray {
 
     if (changed) {
       this._gl.uniform2iv(this._location, arraybuffer);
+    }
+  }
+}
+///////////////////////////////////////////////////////////////////////////
+class UniformArrayUintVec2 extends UniformArray {
+  value: Cartesian2[];
+  _value: Uint32Array;
+  _gl: WebGL2RenderingContext;
+  constructor(
+    gl: WebGL2RenderingContext,
+    activeUniform: WebGLActiveInfo,
+    uniformName: string,
+    locations: WebGLUniformLocation[]
+  ) {
+    super(gl, activeUniform, uniformName, locations);
+
+    const length = locations.length;
+    this.value = new Array(length);
+    this._value = new Uint32Array(length * 2);
+  }
+
+  set(): void {
+    const value = this.value;
+    const length = value.length;
+    const arraybuffer = this._value;
+    let changed = false;
+    let j = 0;
+
+    for (let i = 0; i < length; ++i) {
+      const v = value[i];
+
+      if (!Cartesian2.equalsArray(v, arraybuffer as unknown as number[], j)) {
+        Cartesian2.pack(v, arraybuffer as unknown as number[], j);
+        changed = true;
+      }
+      j += 2;
+    }
+
+    if (changed) {
+      this._gl.uniform2uiv(this._location, arraybuffer);
     }
   }
 }
@@ -433,6 +520,47 @@ class UniformArrayIntVec3 extends UniformArray {
   }
 }
 ///////////////////////////////////////////////////////////////////////////
+class UniformArrayUintVec3 extends UniformArray {
+  value: Cartesian3[];
+  _value: Uint32Array;
+  _gl: WebGL2RenderingContext;
+  constructor(
+    gl: WebGL2RenderingContext,
+    activeUniform: WebGLActiveInfo,
+    uniformName: string,
+    locations: WebGLUniformLocation[]
+  ) {
+    super(gl, activeUniform, uniformName, locations);
+
+    const length = locations.length;
+    this.value = new Array(length);
+    this._value = new Uint32Array(length * 3);
+  }
+
+  set(): void {
+    const value = this.value;
+    const length = value.length;
+    const arraybuffer = this._value;
+    let changed = false;
+    let j = 0;
+
+    for (let i = 0; i < length; ++i) {
+      const v = value[i];
+
+      if (!Cartesian3.equalsArray(v, arraybuffer as unknown as number[], j)) {
+        Cartesian3.pack(v, arraybuffer as unknown as number[], j);
+        changed = true;
+      }
+
+      j += 3;
+    }
+
+    if (changed) {
+      this._gl.uniform3uiv(this._location, arraybuffer);
+    }
+  }
+}
+///////////////////////////////////////////////////////////////////////////
 class UniformArrayIntVec4 extends UniformArray {
   value: Cartesian4[];
   _value: Int32Array;
@@ -469,6 +597,47 @@ class UniformArrayIntVec4 extends UniformArray {
 
     if (changed) {
       this._gl.uniform4iv(this._location, arraybuffer);
+    }
+  }
+}
+///////////////////////////////////////////////////////////////////////////
+class UniformArrayUintVec4 extends UniformArray {
+  value: Cartesian4[];
+  _value: Uint32Array;
+  _gl: WebGL2RenderingContext;
+  constructor(
+    gl: WebGL2RenderingContext,
+    activeUniform: WebGLActiveInfo,
+    uniformName: string,
+    locations: WebGLUniformLocation[]
+  ) {
+    super(gl, activeUniform, uniformName, locations);
+
+    const length = locations.length;
+    this.value = new Array(length);
+    this._value = new Uint32Array(length * 4);
+  }
+
+  set(): void {
+    const value = this.value;
+    const length = value.length;
+    const arraybuffer = this._value;
+    let changed = false;
+    let j = 0;
+
+    for (let i = 0; i < length; ++i) {
+      const v = value[i];
+
+      if (!Cartesian4.equalsArray(v, arraybuffer as unknown as number[], j)) {
+        Cartesian4.pack(v, arraybuffer as unknown as number[], j);
+        changed = true;
+      }
+
+      j += 4;
+    }
+
+    if (changed) {
+      this._gl.uniform4uiv(this._location, arraybuffer);
     }
   }
 }
