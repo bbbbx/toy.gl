@@ -2,34 +2,56 @@ import PixelDatatype from "../core/PixelDatatype";
 import PixelFormat from "../core/PixelFormat";
 import PixelInternalFormat from "../core/PixelInternalFormat";
 import WebGLConstants from "../core/WebGLConstants";
+import defaultValue from "../core/defaultValue";
 import Context from "../renderer/Context";
+import CubeMapFace from "../renderer/CubeMapFace";
 import Framebuffer from "../renderer/Framebuffer";
+import Renderbuffer from "../renderer/Renderbuffer";
 import Texture from "../renderer/Texture";
+import RenderTargets from "./RenderTargets";
 
-class DeferredRenderTargets {
-  _framebuffer: Framebuffer
-  _rt0: Texture; // lighting accumulation/emissive
-  _rt1: Texture; // world normal, Octahedron Normal Vectors, RGB10_A2
-  _rt2: Texture; // (Metallic, Specular, Roughness, ShadingModelID | SelectiveOutputMask)
-  _rt3: Texture; // (base color, AO), sRGB
-  _rt4: Texture; // (clearcoat, clearcoat roughness)
-  _rt5: Texture;
-  _rt6: Texture; // (world tangent, anisotropy)
-  _rt7: Texture; // clearcoat normal
-  _depthTexture: Texture;
+class DeferredRenderTargets extends RenderTargets {
+  context: Context;
+  colorBuffers: Texture[] = [];
 
-  public get framebuffer() { return this._framebuffer; }
+  // _rt0: Texture; // lighting accumulation/emissive
+  // _rt1: Texture; // world normal, Octahedron Normal Vectors, RGB10_A2
+  // _rt2: Texture; // (Metallic, Specular, Roughness, ShadingModelID | SelectiveOutputMask)
+  // _rt3: Texture; // (base color, AO), sRGB
+  // _rt4: Texture; // (clearcoat, clearcoat roughness)
+  // _rt5: Texture;
+  // _rt6: Texture; // (world tangent, anisotropy)
+  // _rt7: Texture; // clearcoat normal
+  depthBuffer: Texture;
+
+  width: number;
+  height: number;
 
   constructor(options: {
     context: Context,
-    width: number,
-    height: number,
+    width?: number,
+    height?: number,
   }) {
     const context = options.context;
-    const width = options.width;
-    const height = options.height;
 
-    this._rt0 = new Texture({
+    super(context);
+
+    this.context = context;
+
+    const width = defaultValue(options.width, context.drawingBufferWidth);
+    const height = defaultValue(options.height, context.drawingBufferHeight);
+    this.resize(width, height)
+  }
+
+  resize(width: number, height: number) {
+    const context = this.context;
+
+    this.colorBuffers.forEach(buffer => buffer = buffer && buffer.destroy());
+    this.depthBuffer = this.depthBuffer && this.depthBuffer.destroy();
+    this.depthStencilBuffer = this.depthStencilBuffer && this.depthStencilBuffer.destroy();
+    this.framebuffer = this.framebuffer && this.framebuffer.destroy();
+
+    const rt0 = new Texture({
       context: context,
       width: width,
       height: height,
@@ -37,7 +59,7 @@ class DeferredRenderTargets {
       pixelFormat: PixelFormat.RGBA,
     });
 
-    this._rt1 = new Texture({
+    const rt1 = new Texture({
       context: context,
       width: width,
       height: height,
@@ -45,7 +67,7 @@ class DeferredRenderTargets {
       pixelFormat: PixelFormat.RGBA,
     });
 
-    this._rt2 = new Texture({
+    const rt2 = new Texture({
       context: context,
       width: width,
       height: height,
@@ -53,7 +75,7 @@ class DeferredRenderTargets {
       pixelFormat: PixelFormat.RGBA,
     });
 
-    this._rt3 = new Texture({
+    const rt3 = new Texture({
       context: context,
       width: width,
       height: height,
@@ -62,7 +84,7 @@ class DeferredRenderTargets {
       pixelFormat: PixelFormat.RGBA,
     });
 
-    this._rt4 = new Texture({
+    const rt4 = new Texture({
       context: context,
       width: width,
       height: height,
@@ -70,7 +92,7 @@ class DeferredRenderTargets {
       pixelFormat: PixelFormat.RGBA,
     });
 
-    this._rt5 = new Texture({
+    const rt5 = new Texture({
       context: context,
       width: width,
       height: height,
@@ -78,7 +100,7 @@ class DeferredRenderTargets {
       pixelFormat: PixelFormat.RGBA,
     });
 
-    this._rt6 = new Texture({
+    const rt6 = new Texture({
       context: context,
       width: width,
       height: height,
@@ -86,47 +108,49 @@ class DeferredRenderTargets {
       pixelFormat: PixelFormat.RGBA,
     });
 
-    this._rt7 = new Texture({
-      context: context,
-      width: width,
-      height: height,
-      pixelDatatype: PixelDatatype.UNSIGNED_BYTE,
-      pixelFormat: PixelFormat.RGBA,
-    });
+    // this._rt7 = new Texture({
+    //   context: context,
+    //   width: width,
+    //   height: height,
+    //   pixelDatatype: PixelDatatype.UNSIGNED_BYTE,
+    //   pixelFormat: PixelFormat.RGBA,
+    // });
 
-    this._depthTexture = new Texture({
+    this.colorBuffers = [
+      rt0,
+      rt1,
+      rt2,
+      rt3,
+      rt4,
+      rt5,
+      rt6,
+      // this._rt7,
+    ];
+    this.depthBuffer = new Texture({
       context: context,
       width: width,
       height: height,
       pixelDatatype: PixelDatatype.UNSIGNED_INT,
       pixelFormat: PixelFormat.DEPTH_COMPONENT,
     });
-
-    this._framebuffer = new Framebuffer({
+    this.framebuffer = new Framebuffer({
       context: context,
-      colorTextures: [
-        this._rt0,
-        this._rt1,
-        this._rt2,
-        this._rt3,
-        this._rt4,
-        this._rt5,
-        this._rt6,
-        this._rt7,
-      ],
-      depthTexture: this._depthTexture,
+      colorTextures: this.colorBuffers,
+      depthTexture: this.depthBuffer,
+      destroyAttachments: false,
     });
+
+    this.width = width;
+    this.height = height;
   }
 
-  getRT0() : Texture { return this._rt0; }
-  getRT1() : Texture { return this._rt1; }
-  getRT2() : Texture { return this._rt2; }
-  getRT3() : Texture { return this._rt3; }
-  getRT4() : Texture { return this._rt4; }
-  getRT5() : Texture { return this._rt5; }
-  getRT6() : Texture { return this._rt6; }
-  getRT7() : Texture { return this._rt7; }
-  getDepthTexture() : Texture { return this._depthTexture; }
+
+  getColorBuffer(location: number): Texture {
+    return this.colorBuffers[location];
+  }
+  getDepthBuffer(): Texture {
+    return this.depthBuffer;
+  }
 }
 
 export default DeferredRenderTargets;

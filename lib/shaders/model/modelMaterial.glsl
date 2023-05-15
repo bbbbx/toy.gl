@@ -16,7 +16,7 @@ struct modelMaterial
   vec3 normalEC;
   vec3 tangent;
 
-  int shadingModelId;
+  uint shadingModelId;
 
   float clearcoat;
   float clearcoatRoughness;

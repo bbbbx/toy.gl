@@ -89,6 +89,10 @@ class Clearcoat {
 
 class Material {
   static DEFAULT_EMISSIVE_FACTOR = Cartesian3.ZERO;
+  static SHADINGMODELID_UNLIT = 0;
+  static SHADINGMODELID_DEFAULT_LIT = 1;
+  static SHADINGMODELID_CLEAR_COAT = 4;
+  static SHADINGMODELID_THIN_TRANSLUCENT = 11;
 
   metallicRoughness: MetallicRoughness;
 

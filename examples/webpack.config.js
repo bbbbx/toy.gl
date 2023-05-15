@@ -4,12 +4,14 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 module.exports = {
   entry: {
     hello: './hello/index.ts',
+    // cubemap: './next/cubemap/index.ts',
+    mvp: './next/mvp/index.ts',
+    // SkyAtmosphere: './SkyAtmosphere/index.ts',
   },
   output: {
-    filename: '[name]/[name].[contenthash].bundle.js',
+    filename: '[name]/[name].bundle.js',
     path: path.resolve(__dirname, 'dist'),
   },
-  mode: 'development',
   module: {
     rules: [
       {
@@ -23,34 +25,20 @@ module.exports = {
         ]
       },
       {
-        test: /\.(frag|vert)$/,
+        test: /\.(frag|vert|glsl|gltf)$/,
         type: 'asset/source',
       },
       {
-        test: /\.(hdr|png)$/,
+        test: /\.(hdr|png|jpeg|jpg|glb)$/,
         type: 'asset/resource',
       },
     ],
   },
   resolve: {
-    extensions: ['.ts', '.js', '.frag', '.vert', 'hdr']
+    extensions: ['.ts', '.js', '.frag', '.vert', '.glsl', '.hdr']
   },
-  plugins: [
-    // new HtmlWebpackPlugin({
-    //   title: 'Hello',
-    //   filename: 'hello/index.html',
-    //   chunks: ['hello'],
-    //   template: 'index.html',
-    // }),
-    // new HtmlWebpackPlugin({
-    //   title: 'Hello2',
-    //   filename: 'hello2/index.html',
-    //   chunks: ['hello2'],
-    //   template: 'index.html',
-    // }),
-  ],
+  plugins: [],
 };
-
 
 for (const entryName in module.exports.entry) {
   if (module.exports.entry.hasOwnProperty(entryName)) {
@@ -58,7 +46,7 @@ for (const entryName in module.exports.entry) {
       title: entryName,
       filename: `${entryName}/index.html`,
       chunks: [entryName],
-      template: 'index.html',
+      template: 'template.html',
     }))
   }
 }

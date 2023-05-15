@@ -1,6 +1,5 @@
 import CullingVolume from "../core/CullingVolume";
 import Context from "../renderer/Context";
-import DeferredRenderTargets from "./DeferredRenderTargets";
 import DrawCommand from "../renderer/DrawCommand";
 import Camera from "./Camera";
 import JobScheduler from "./JobScheduler";
@@ -15,7 +14,6 @@ class FrameState {
   camera: Camera;
   cullingVolume: CullingVolume;
   commandList: DrawCommand[];
-  deferredRenderTargets: DeferredRenderTargets;
   clock: Clock;
 
   constructor(context: Context, jobScheduler: JobScheduler) {

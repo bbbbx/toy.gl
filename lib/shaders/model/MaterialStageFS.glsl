@@ -3,6 +3,17 @@ vec2 computeTextureTransform(vec2 texCoord, mat3 textureTransform)
   return vec2(textureTransform * vec3(texCoord, 1.0));
 }
 
+
+void handleAlpha(vec3 color, float alpha)
+{
+#ifdef ALPHA_MODE_MASK
+  if (alpha < u_alphaCutoff)
+  {
+    discard;
+  }
+#endif
+}
+
 #ifdef HAS_NORMALS
 vec3 computeNormal(ProcessedAttributes attributes)
 {
@@ -85,6 +96,7 @@ void materialStage(inout modelMaterial material, ProcessedAttributes attributes)
 
   material.baseColor = baseColorWithAlpha.rgb;
   material.alpha = baseColorWithAlpha.a;
+  handleAlpha(material.baseColor, material.alpha);
 
 #ifdef HAS_OCCLUSION_TEXTURE
   vec2 occlusionTexCoords = TEXCOORD_OCCLUSION;
@@ -160,7 +172,7 @@ void materialStage(inout modelMaterial material, ProcessedAttributes attributes)
 #endif // USE_METALLIC_ROUGHNESS
 
 #ifdef USE_SPECULAR
-  float specular = 1.0;
+  float specular = 0.5;
 
   #ifdef HAS_SPECULAR_TEXTURE
     vec2 specularTexCoords = TEXCOORD_SPECULAR;
@@ -236,5 +248,6 @@ void materialStage(inout modelMaterial material, ProcessedAttributes attributes)
 
 #endif // USE_CLEARCOAT
 
-  material.shadingModelId = 2;
+  // Material property
+  material.shadingModelId = u_shadingModelId;
 }

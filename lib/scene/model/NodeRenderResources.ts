@@ -1,7 +1,7 @@
 import clone from "../../core/clone";
 import { UniformMap } from "../../renderer/IDrawCommand";
 import { VertexArrayAttribute } from "../../renderer/IVertexArray";
-import RenderState from "../../renderer/RenderState";
+import RenderStateConstructor from "../../renderer/IRenderState";
 import ShaderBuilder from "../../renderer/ShaderBuilder";
 import Model from "./Model";
 import ModelAlphaOptions from "./ModelAlphaOptions";
@@ -12,7 +12,7 @@ class NodeRenderResources {
   model: Model
   shaderBuilder: ShaderBuilder;
   uniformMap: UniformMap;
-  renderStateOptions: ConstructorParameters<typeof RenderState>[0];
+  renderStateOptions: RenderStateConstructor;
   alphaOptions: ModelAlphaOptions;
 
   runtimeNode: ModelRuntimeNode;

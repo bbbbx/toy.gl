@@ -14,7 +14,7 @@ export { default as Buffer } from './renderer/Buffer';
 export { default as BufferTarget } from './renderer/BufferTarget';
 export { default as BufferUsage } from './renderer/BufferUsage';
 export { default as VertexArray } from './renderer/VertexArray';
-export { Attribute } from "./renderer/IVertexArray";
+export { VertexArrayAttribute } from "./renderer/IVertexArray";
 export { default as ShaderSource } from './renderer/ShaderSource';
 export { default as ShaderProgram } from './renderer/ShaderProgram';
 export { default as ShaderCache } from './renderer/ShaderCache';
@@ -31,6 +31,7 @@ export { default as TextureWrap } from './renderer/TextureWrap';
 export { default as Renderbuffer } from './renderer/Renderbuffer';
 export { default as Framebuffer } from './renderer/Framebuffer';
 export { default as PassState } from './renderer/PassState';
+export { default as Pass } from './renderer/Pass';
 export { default as ContextLimits } from './renderer/ContextLimits';
 
 export { default as PrimitiveType } from './core/PrimitiveType';
@@ -49,6 +50,7 @@ export { default as CullFace } from './core/CullFace';
 export { default as WebGLConstants } from './core/WebGLConstants';
 export { default as Color } from './core/Color';
 export { default as BoundingRectangle } from './core/BoundingRectangle';
+export { default as BoundingSphere } from './core/BoundingSphere';
 export { default as defaultValue } from './core/defaultValue';
 export { default as defined } from './core/defined';
 export { default as destroyObject } from './core/destroyObject';
@@ -65,6 +67,13 @@ export { default as Matrix4 } from './math/Matrix4';
 export { default as PerspectiveFrustum } from './math/PerspectiveFrustum';
 export { default as Spherical } from './math/Spherical';
 
+export { default as Scene } from './scene/Scene';
 export { default as Camera } from './scene/Camera';
 export { default as CameraController } from './scene/CameraController';
 export { default as OrbitCameraController } from './scene/OrbitCameraController';
+
+export { default as Model } from './scene/model/Model';
+export { default as FrameState } from './scene/FrameState';
+export { default as JobScheduler } from './scene/JobScheduler';
+export { default as ResourceCache } from './scene/model/ResourceCache';
+export { default as DeferredRenderer } from './scene/DeferredRenderer';

@@ -5,7 +5,6 @@ import VertexArray from "../../renderer/VertexArray";
 import FrameState from "../FrameState";
 import PrimitiveRenderResources from "./PrimitiveRenderResources";
 import Matrix4 from "../../math/Matrix4";
-import Matrix3 from "../../math/Matrix3";
 import ModelUtility from "./ModelUtility";
 import ModelVS from "../../shaders/model/ModelVS.glsl";
 import ModelFS from "../../shaders/model/ModelFS.glsl";

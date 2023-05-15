@@ -1,3 +1,4 @@
+import CullingVolume from "../core/CullingVolume";
 import Frustum from "./Frustum";
 import Matrix4 from "./Matrix4";
 
@@ -13,6 +14,7 @@ class PerspectiveFrustum implements Frustum {
   private _aspectRatio: number;
   private _near: number;
   private _far: number;
+  _cullingVolume: CullingVolume;
 
   fov: number;
   aspectRatio: number;
@@ -23,7 +25,7 @@ class PerspectiveFrustum implements Frustum {
     fov?: number,
     aspectRatio?: number,
     near: number = 0.1,
-    far: number = 1e9
+    far: number = 500
   ) {
     this.fov = fov;
     this.aspectRatio = aspectRatio;
@@ -32,6 +34,7 @@ class PerspectiveFrustum implements Frustum {
 
     this._near = near;
     this._far = far;
+    this._cullingVolume = new CullingVolume();
   }
 
   update() {

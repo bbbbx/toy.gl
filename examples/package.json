@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "rm -rf dist && webpack --watch --devtool=inline-source-map",
+    "dev": "rm -rf dist && webpack --watch --devtool=inline-source-map --mode=development",
+    "build": "rm -rf dist && webpack --mode=production",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

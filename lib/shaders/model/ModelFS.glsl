@@ -5,7 +5,7 @@ layout (location = 3) out vec4 outColor3;
 layout (location = 4) out vec4 outColor4;
 layout (location = 5) out vec4 outColor5;
 layout (location = 6) out vec4 outColor6;
-layout (location = 7) out vec4 outColor7;
+// layout (location = 7) out vec4 outColor7;
 
 modelMaterial getDefaultModelMaterial()
 {
@@ -26,25 +26,13 @@ modelMaterial getDefaultModelMaterial()
   material.normalEC = vec3(0.0, 0.0, 1.0);
   material.tangent = vec3(1.0, 0.0, 0.0);
 
-  material.shadingModelId = 0;
+  material.shadingModelId = SHADINGMODELID_UNLIT;
 
   material.clearcoat = 0.0;
   material.clearcoatRoughness = 0.0;
   material.clearcoatNormal = vec3(0.0, 0.0, 1.0);
 
   return material;
-}
-
-vec4 handleAlpha(vec3 color, float alpha)
-{
-#ifdef ALPHA_MODE_MASK
-  if (alpha < u_alphaCutoff)
-  {
-    discard;
-  }
-#endif
-
-  return vec4(color, alpha);
 }
 
 void main()
@@ -55,18 +43,20 @@ void main()
   modelMaterial material = getDefaultModelMaterial();
   materialStage(material, attributes);
 
-  // vec4 color = lightingStage(material, attributes);
-
 #ifdef HAS_PRIMITIVE_OUTLINE
   // primitiveOutlineStage(material);
 #endif
 
-  // color = handleAlpha(color);
+  toy_GBufferData GBuffer;
+  GBuffer.BaseColor = material.baseColor;
 
   outColor0.rgb = material.emissive;
   outColor1.rgb = normalize(material.normalEC);
-  outColor2 = vec4(material.metallic, material.specular, material.roughness, float(material.shadingModelId) / 255.0);
-  outColor3 = vec4(material.baseColor, material.occlusion);
+
+  outColor2.rgb = vec3(material.metallic, material.specular, material.roughness);
+  outColor2.a = EncodeShadingModelIdAndSelectiveOutputMask(material.shadingModelId, 0u);
+
+  outColor3 = vec4(GBuffer.BaseColor, material.occlusion);
 
   // TODO:
   outColor4 = vec4(material.clearcoat, material.clearcoatRoughness, 0.0, 0.0);
@@ -74,7 +64,7 @@ void main()
 
   outColor6 = vec4(material.tangent, material.anisotropy);
 
-  outColor7 = vec4(material.clearcoatNormal, 0.0);
+  // outColor7 = vec4(material.clearcoatNormal, 0.0);
 
 #if 1
   outColor1.rg = toy_UnitVectorToOctahedron(outColor1.rgb) * 0.5 + 0.5;

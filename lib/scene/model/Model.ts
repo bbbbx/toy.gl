@@ -13,6 +13,7 @@ import ModelUtility from "./ModelUtility";
 import BoundingSphere from "../../core/BoundingSphere";
 import DeveloperError from "../../core/DeveloperError";
 import Cartesian3 from "../../math/Cartesian3";
+import Renderable from "../Renderable";
 
 function initialize(model: Model) {
   const loader = model._loader;
@@ -81,7 +82,7 @@ function initialize(model: Model) {
 /**
  * @public
  */
-class Model {
+class Model implements Renderable {
   /** @internal */
   _loader: GltfLoader;
   /** @internal */
@@ -215,6 +216,10 @@ class Model {
   }
 
   isDestroyed() { return false; };
+
+  destroy() {
+    // TODO:
+  };
 
   static fromGltf(options: {
     url: string | Resource,

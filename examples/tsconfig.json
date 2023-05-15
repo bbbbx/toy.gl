@@ -1,6 +1,7 @@
 {
   "include": [
-    "./**/*"
+    "./hello/",
+    "./next/**/*"
   ],
   "files": [
     "./index.d.ts"

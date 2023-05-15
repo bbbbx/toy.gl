@@ -1,12 +1,16 @@
 {
-  "include": ["./lib"],
-  "exclude": ["./node_modules"],
+  "include": ["./lib/**/*.ts"],
+  "exclude": ["./node_modules/**/*"],
+  "files": [
+    "./lib/index.d.ts"
+  ],
   "compilerOptions": {
     "declaration": true,
+    "sourceMap": true,
     "declarationMap": true,
+    "esModuleInterop": true,
     "outDir": "dist",
-    "lib": ["ESNext", "DOM"],
-    "target": "ES5",
-    "inlineSourceMap": true
+    "lib": ["ES2021", "DOM"],
+    "target": "ES5"
   }
 }

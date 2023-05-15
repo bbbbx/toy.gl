@@ -2,6 +2,7 @@ import Color from "../core/Color";
 import defaultValue from "../core/defaultValue";
 import Context from "./Context";
 import Framebuffer from "./Framebuffer";
+import PassState from "./PassState";
 import RenderState from "./RenderState";
 
 /**
@@ -36,8 +37,8 @@ class ClearCommand {
     this.owner = options.owner;
   }
 
-  public execute(context: Context) {
-    context.clear(this);
+  public execute(context: Context, passState?: PassState) {
+    context.clear(this, passState);
   }
 }
 

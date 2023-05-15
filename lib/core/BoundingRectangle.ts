@@ -21,6 +21,14 @@ class BoundingRectangle {
     this.width = width;
     this.height = height;
   }
+
+  static clone(rectangle: BoundingRectangle, result = new BoundingRectangle()) : BoundingRectangle {
+    result.x = rectangle.x;
+    result.y = rectangle.y;
+    result.width = rectangle.width;
+    result.height = rectangle.height;
+    return result;
+  }
 }
 
 export default BoundingRectangle;

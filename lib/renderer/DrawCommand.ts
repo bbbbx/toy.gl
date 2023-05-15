@@ -43,6 +43,7 @@ class DrawCommand {
   /** @internal */
   _boundingVolume: BoundingVolume;
 
+  // Needs to update derived commands if this command is dirty
   dirty: boolean;
   lastDirtyTime: number;
 

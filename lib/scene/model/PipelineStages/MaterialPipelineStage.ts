@@ -14,6 +14,8 @@ import ModelUtility from "../ModelUtility";
 import PrimitiveRenderResources from "../PrimitiveRenderResources";
 import VertexAttributeSemantic from "../VertexAttributeSemantic";
 import Pass from "../../../renderer/Pass";
+import ShadingCommon from "../../../shaders/ShadingCommon.glsl";
+import DeferredShadingCommon from "../../../shaders/DeferredShadingCommon.glsl";
 import modelMaterialStruct from "../../../shaders/model/modelMaterial.glsl";
 import MaterialStageFS from "../../../shaders/model/MaterialStageFS.glsl";
 
@@ -181,6 +183,8 @@ const MaterialPipelineStage = {
     const defaultEmissiveTexture = context.defaultEmissiveTexture;
     const defaultNormalTexture = context.defaultNormalTexture;
 
+    processMaterialShadingModelId(material, uniformMap, shaderBuilder);
+
     processMaterialUniforms(
       material,
       uniformMap,
@@ -238,6 +242,29 @@ const MaterialPipelineStage = {
     }
   },
 };
+
+function processMaterialShadingModelId(
+  material: Material,
+  uniformMap: UniformMap,
+  shaderBuilder: ShaderBuilder,
+) {
+  let shadingModelId = Material.SHADINGMODELID_DEFAULT_LIT;
+  if (defined(material.clearcoat)) {
+    shadingModelId = Material.SHADINGMODELID_CLEAR_COAT;
+  }
+  if (material.alphaMode === AlphaMode.BLEND) {
+    shadingModelId = Material.SHADINGMODELID_THIN_TRANSLUCENT;
+  }
+  shaderBuilder.addUniform('uint', 'u_shadingModelId', ShaderDestination.FRAGMENT);
+  uniformMap.u_shadingModelId = function () {
+    return shadingModelId;
+  };
+
+  shaderBuilder.addFragmentLines([
+    ShadingCommon,
+    DeferredShadingCommon
+  ]);
+}
 
 function processMaterialUniforms(
   material: Material,
